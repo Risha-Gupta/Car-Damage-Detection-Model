@@ -8,7 +8,7 @@ import os
 class PredictionService:
     def __init__(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.model_path = os.path.join(base_dir, "../../../models/stage1/resnet50_damage.keras")
+        self.model_path = os.path.join(base_dir, "../../../Middleware/models/stage1/resnet50_damage.keras")
         self.threshold = 0.5
         self.img_size = 224
         self.model = self._load_model()

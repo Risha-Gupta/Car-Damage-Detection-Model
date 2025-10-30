@@ -24,5 +24,14 @@ async def root():
     return {
         "message": "Image Damage Detection API",
         "docs": "/docs",
-        "health": "/api/v1/health"
+        "health": "/api/health"
     }
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",              
+        host="0.0.0.0",         
+        port=8000,              
+        reload=True            
+    )
+    
