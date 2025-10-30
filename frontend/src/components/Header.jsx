@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import ProgressStepper from "./ProgressStepper";
 const Header = () => {
