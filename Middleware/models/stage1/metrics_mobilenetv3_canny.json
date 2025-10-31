@@ -1,0 +1,22 @@
+{
+  "model": "mobilenetv3_canny",
+  "total_epochs": 15,
+  "initial_epochs": 15,
+  "finetune_epochs": 0,
+  "final_val_accuracy": 0.8447204828262329,
+  "final_val_precision": 0.9369369149208069,
+  "final_val_recall": 0.738898754119873,
+  "final_val_auc": 0.9410248398780823,
+  "best_val_accuracy": 0.8553682565689087,
+  "best_val_auc": 0.9410248398780823,
+  "class_weights": {
+    "0": 1.000222024866785,
+    "1": 0.9997780736795384
+  },
+  "dataset_info": {
+    "train_damaged": 2253,
+    "train_clean": 2252,
+    "val_damaged": 563,
+    "val_clean": 564
+  }
+}

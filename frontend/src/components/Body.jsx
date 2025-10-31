@@ -32,13 +32,12 @@ const Body = () => {
 
         try {
             const response = await getIsDamaged(selectedImage);
-            const data = response.data;
-
+            const data = response.data.result;
             setPrediction(data);
-            setResult(`✅ Prediction complete for "${selectedImage.name}"`);
+            setResult(`Prediction complete for "${selectedImage.name}"`);
         } catch (error) {
             console.error('Prediction error:', error);
-            setResult('❌ Failed to get prediction. Please try again.');
+            setResult('Failed to get prediction. Please try again.');
         } finally {
             setLoading(false);
         }

@@ -1,1 +1,1 @@
-export const PIPELINE_API_BASE_URL ="http://localhost:8000/api/car-damage-detector";
+export const PIPELINE_API_BASE_URL ="http://localhost:8000/api";

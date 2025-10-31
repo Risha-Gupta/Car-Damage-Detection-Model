@@ -3,7 +3,7 @@ import { PIPELINE_API_BASE_URL } from "../../public/constants";
 
 export const getIsDamaged = (IMAGE) => {
     const formData = new FormData();
-    formData.append('image', IMAGE); 
+    formData.append('file', IMAGE); 
     
     return axios.post(PIPELINE_API_BASE_URL + "/predict", formData, {
         headers: {
