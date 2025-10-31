@@ -119,15 +119,21 @@ const Body = () => {
                 )}
 
                 {prediction && (
-                    <div className="mt-6 p-6 bg-green-50 border border-green-200 rounded-lg">
-                        <h2 className="text-xl font-semibold text-green-800 mb-3">Prediction Result</h2>
-                        <p className="text-green-700">
+                    <div className={`mt-6 p-6 ${
+                        prediction.is_damaged
+                            ? "bg-red-50 border-red-200"
+                            : "bg-green-50 border-green-200"
+                        } rounded-lg`}>
+                        <h2 className={`text-xl font-semibold mb-3 ${
+                            prediction.is_damaged ? "text-red-800" : "text-green-800"
+                        }`}>Prediction Result</h2>
+                        <p className={prediction.is_damaged ? "text-red-700" : "text-green-700"}>
                             <strong>Status:</strong> {prediction.status}
                         </p>
-                        <p className="text-green-700">
+                        <p className={prediction.is_damaged ? "text-red-700" : "text-green-700"}>
                             <strong>Damage Probability:</strong> {prediction.damage_probability}
                         </p>
-                        <p className="text-green-700">
+                        <p className={prediction.is_damaged ? "text-red-700" : "text-green-700"}>
                             <strong>Confidence:</strong> {(prediction.confidence * 100).toFixed(2)}%
                         </p>
                     </div>
