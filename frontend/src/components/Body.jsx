@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Upload, Loader2 } from 'lucide-react';
 import { getIsDamaged } from '../services/predectiveModels';
+import { setImage } from '../utils/imageSlice'; 
 
 const Body = () => {
+    const dispatch = useDispatch();
+    const { image } = useSelector((state) => state.image);
     const [selectedImage, setSelectedImage] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [result, setResult] = useState('');
@@ -17,6 +22,7 @@ const Body = () => {
             setPreviewUrl(url);
             setResult('');
             setPrediction(null);
+            dispatch(setImage(file));
         }
     };
 
