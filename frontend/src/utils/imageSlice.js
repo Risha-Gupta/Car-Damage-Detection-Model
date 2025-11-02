@@ -27,8 +27,11 @@ const imageSlice = createSlice({
                 }
             }
         },
+        setStep : (state,action) => {
+            state.step = action.payload
+        }
     },
 });
 
-export const { setImage, increment, decrement } = imageSlice.actions;
+export const { setImage, increment, decrement , setStep} = imageSlice.actions;
 export default imageSlice.reducer;
