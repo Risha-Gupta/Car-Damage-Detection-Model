@@ -1,6 +1,7 @@
 import tensorflow as tf
-from tensorflow.keras.applications import MobileNetV3Small
-from tensorflow.keras import layers, models, optimizers
+import keras
+from keras.applications import MobileNetV3Small
+from keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 import cv2, numpy as np, os, json, keras
@@ -120,10 +121,9 @@ def tf_preprocess_wrapper(path, label, augment):
         func=_func,
         inp=[path, label, augment],
         Tout=[tf.float32, tf.int32]
-    )
+    ) # pyright: ignore[reportGeneralTypeIssues]
     
-    # CRITICAL: Set shapes explicitly
-    combined.set_shape([*IMG_SIZE, 6])  # 6 channels!
+    combined.set_shape([*IMG_SIZE, 6])  
     label.set_shape([])
     
     return combined, label
@@ -184,9 +184,9 @@ model.compile(
     loss="binary_crossentropy",
     metrics=[
         "accuracy", 
-        tf.keras.metrics.Precision(name='precision'),
-        tf.keras.metrics.Recall(name='recall'),
-        tf.keras.metrics.AUC(name="auc")
+        keras.metrics.Precision(name='precision'),
+        keras.metrics.Recall(name='recall'),
+        keras.metrics.AUC(name="auc")
     ]
 )
 
@@ -197,18 +197,18 @@ model.summary()
 # CALLBACKS
 # -----------------------------
 callbacks_initial = [
-    tf.keras.callbacks.ReduceLROnPlateau(
+    keras.callbacks.ReduceLROnPlateau(
         monitor="val_loss", factor=0.5, patience=3, min_lr=1e-7, verbose=1
     ),
-    tf.keras.callbacks.EarlyStopping(
+    keras.callbacks.EarlyStopping(
         monitor="val_auc", patience=5, mode="max", 
         restore_best_weights=True, verbose=1
     ),
-    tf.keras.callbacks.ModelCheckpoint(
+    keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(BASE_PATH, f"models/stage1/{MODEL_NAME}_best.keras"),
         monitor="val_auc", mode="max", save_best_only=True, verbose=1
     ),
-    tf.keras.callbacks.TensorBoard(
+    keras.callbacks.TensorBoard(
         log_dir=os.path.join(BASE_PATH, 'logs'), histogram_freq=1
     )
 ]
