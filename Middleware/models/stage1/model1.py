@@ -19,9 +19,6 @@ MODEL_NAME = "mobilenetv3_canny"
 DAMAGED_DIR = os.path.join(BASE_PATH, "dataset/CarDD_COCO/train")
 CLEAN_DIR   = os.path.join(BASE_PATH, "dataset/CarDD_COCO/clean_cars")
 
-# -----------------------------
-# LOAD IMAGE PATHS
-# -----------------------------
 def list_images(directory):
     return [os.path.join(directory, f) for f in os.listdir(directory)
             if f.lower().endswith(('.jpg', '.jpeg', '.png'))]

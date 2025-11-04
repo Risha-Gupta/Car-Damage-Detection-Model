@@ -5,11 +5,16 @@ from tqdm import tqdm
 from PIL import Image
 
 # === SOURCE DATA ===
-BASE = "Middleware/dataset/CarDD_COCO"
-TRAIN_JSON = f"{BASE}/annotations/instances_train2017.json"
-VAL_JSON = f"{BASE}/annotations/instances_val2017.json"
-TRAIN_IMG_DIR = f"{BASE}/train"
-VAL_IMG_DIR = f"{BASE}/val"
+current_working_directory = os.getcwd()
+
+# Print the current working directory
+print("Current working directory:", current_working_directory)
+BASE = "dataset/CarDD_COCO/"
+
+TRAIN_JSON = os.path.join(BASE,"annotations/instances_train2017.json")
+VAL_JSON = os.path.join(BASE,"annotations/instances_val2017.json")
+TRAIN_IMG_DIR = os.path.join(BASE,"train")
+VAL_IMG_DIR = os.path.join(BASE,"val")
 
 # === OUTPUT YOLO DATASET ===
 OUT_DIR = "datasets/damage_seg"
