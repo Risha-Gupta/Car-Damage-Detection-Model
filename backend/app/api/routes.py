@@ -1,6 +1,6 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from app.services.prediction import PredictionService
-
+from app.services.locate import LocationService
 router = APIRouter()
 
 prediction_service = PredictionService()
@@ -41,6 +41,37 @@ async def predict_damage(
             status_code=500,
             detail=f"Error processing image: {str(e)}"
         )
+
+damage_service = LocationService()
+
+def get_damage_service():
+    return damage_service
+
+
+@router.post("/damage/locate")
+async def locate_damage(
+    file: UploadFile = File(...),
+    service: LocationService = Depends(get_damage_service)
+):
+    """
+    Stage 2: Detect damage regions (bbox + mask + roi + polygons)
+    """
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    try:
+        image_bytes = await file.read()
+        result = service.predict(image_bytes)
+
+        return {
+            "success": True,
+            "filename": file.filename,
+            "stage": 2,
+            "result": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during segmentation: {str(e)}")
 
 @router.get("/health")
 async def health_check():
