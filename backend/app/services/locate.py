@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
+import io
+from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
@@ -65,20 +67,29 @@ class Stage2DamageLocalizationDetector:
             'damage_regions_count': len(detected_damage_bboxes)
         }
 
-    def localize_damages_in_image(self, image_path: str, stage1_result: dict) -> dict:
-        if not stage1_result['is_car_damaged']:
-            return {
-                'stage2_status': 'skipped',
-                'reason': 'Image classified as not damaged in Stage 1',
-                'detected_damage_bboxes': [],
-                'damage_regions_count': 0
-            }
-        
-        original_image = stage1_result['original_image']
-        detection_output = self.run_damage_detection(original_image)
+    def localize_damages_in_image(self, image_array: np.ndarray) -> dict:
+        detection_output = self.run_damage_detection(image_array)
         
         return {
             'stage2_status': 'completed',
             'detected_damage_bboxes': detection_output['detected_damage_bboxes'],
             'damage_regions_count': detection_output['damage_regions_count']
         }
+
+
+class LocationService:
+    def __init__(self):
+        model_path = os.getenv('STAGE2_MODEL_PATH', 'Middleware/models/stage2/yoloBest.pt')
+        self.detector = Stage2DamageLocalizationDetector(model_path)
+
+    def predict(self, img_bytes: bytes) -> dict:
+        try:
+            img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+            img_arr = np.array(img)
+            
+            result = self.detector.localize_damages_in_image(img_arr)
+            
+            return result
+        
+        except Exception as e:
+            raise Exception(f"Stage 2 localization error: {str(e)}")
