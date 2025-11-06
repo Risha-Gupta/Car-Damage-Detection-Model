@@ -188,18 +188,20 @@ def main():
     argument_parser = argparse.ArgumentParser(description='Train Stage 2: Damage Localization Model')
     argument_parser.add_argument('--config', type=str, default='config/model_config.yaml',
                         help='Path to configuration file')
-    argument_parser.add_argument('--data', type=str, default=DATA_DIR,
-                        help='Path to data directory')
+    argument_parser.add_argument('--data', type=str, default=None,
+                        help='Path to your dataset (e.g., /path/to/CarDD_SOD)')
     argument_parser.add_argument('--epochs', type=int, default=EPOCHS,
                         help='Number of epochs to train')
     parsed_arguments = argument_parser.parse_args()
 
+    data_path = parsed_arguments.data if parsed_arguments.data else DATA_DIR
+    
     loaded_config = load_yaml_configuration(parsed_arguments.config)
     
     Path(CHECKPOINT_DIR).mkdir(parents=True, exist_ok=True)
     Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
 
-    image_collection, bbox_collection = load_image_and_bbox_data(parsed_arguments.data)
+    image_collection, bbox_collection = load_image_and_bbox_data(data_path)
 
     image_preprocessor = ImagePreprocessor(target_size=INPUT_SIZE)
     data_augmentor = DataAugmentor(augmentation_settings=AUGMENTATION_CONFIG)

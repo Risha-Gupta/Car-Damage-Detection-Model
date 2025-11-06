@@ -64,6 +64,26 @@ class DamageLocalizationModel:
     def load_model_checkpoint(self, checkpoint_filepath: str):
         self.detection_network = YOLO(checkpoint_filepath)
 
+    def export_to_keras(self, output_path: str = None):
+        """Export trained model to Keras format"""
+        if output_path is None:
+            output_path = 'Middleware/models/stage2/models/checkpoints/best_localization_model.keras'
+        
+        # YOLOv8 exports to multiple formats - Keras is one of them
+        export_result = self.detection_network.export(format='keras', imgsz=INPUT_SIZE[0])
+        
+        # Rename to .keras extension if needed
+        import shutil
+        from pathlib import Path
+        export_dir = Path(export_result).parent
+        keras_model = export_dir / (Path(export_result).stem + '.keras')
+        
+        if Path(export_result).exists():
+            shutil.move(str(export_result), str(keras_model))
+        
+        print(f"✓ Model exported to Keras format: {keras_model}")
+        return str(keras_model)
+
     def get_model_information(self) -> dict:
         return {
             'model_name': MODEL_NAME,
