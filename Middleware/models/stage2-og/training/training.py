@@ -12,7 +12,7 @@ from os import listdir
 from os.path import join, isfile
 
 from models.yolov8_detector import DamageLocalizationModel
-from data_pipeline.preprocessing import ImagePreprocessor, BboxProcessor
+from data_pipeline.preprocessor import ImagePreprocessor
 from data_pipeline.augmentation import DataAugmentor
 from data_pipeline.loader import DatasetSplitter, Stage2DamageDataset
 from logging.performance_logger import PerformanceLogger
@@ -157,28 +157,37 @@ def load_image_and_bbox_data(data_directory: str) -> tuple:
     image_list = []
     bbox_list = []
 
-    raw_directory = join(data_directory, 'raw')
-    
-    if not Path(raw_directory).exists():
-        raise ValueError(f"Data directory {raw_directory} does not exist. Please place your training images and bbox files in {raw_directory}")
+    if Path(data_directory).name == "CarDD_SOD":
+        # Scan CarDD-TR, CarDD-VAL, CarDD-TE folders
+        subdirs = [d for d in listdir(data_directory) if Path(join(data_directory, d)).is_dir()]
+        raw_directories = [join(data_directory, d) for d in subdirs]
+    else:
+        raw_directories = [join(data_directory, 'raw')]
 
-    for filename in listdir(raw_directory):
-        if filename.endswith(('.jpg', '.jpeg', '.png')):
-            image_path = join(raw_directory, filename)
-            bbox_path = join(raw_directory, filename.replace(filename.split('.')[-1], 'txt'))
-            
-            if isfile(bbox_path):
-                image_array = cv2.imread(image_path)
-                if image_array is not None:
-                    with open(bbox_path, 'r') as bbox_file:
-                        bboxes = [list(map(float, line.strip().split())) for line in bbox_file if line.strip()]
-                    image_list.append(image_array)
-                    bbox_list.append(bboxes)
+    for raw_directory in raw_directories:
+        if not Path(raw_directory).exists():
+            print(f"Warning: Directory {raw_directory} does not exist, skipping...")
+            continue
+
+        print(f"Loading from: {raw_directory}")
+        for filename in listdir(raw_directory):
+            if filename.endswith(('.jpg', '.jpeg', '.png')):
+                image_path = join(raw_directory, filename)
+                bbox_path = join(raw_directory, filename.replace(filename.split('.')[-1], 'txt'))
+                
+                if isfile(bbox_path):
+                    image_array = cv2.imread(image_path)
+                    if image_array is not None:
+                        with open(bbox_path, 'r') as bbox_file:
+                            bboxes = [list(map(float, line.strip().split())) for line in bbox_file if line.strip()]
+                        if len(bboxes) > 0:
+                            image_list.append(image_array)
+                            bbox_list.append(bboxes)
 
     if len(image_list) == 0:
-        raise ValueError(f"No images found in {raw_directory}. Expected image files with corresponding .txt bbox files")
+        raise ValueError(f"No images found in {data_directory}. Ensure image files (.jpg/.png) have corresponding .txt bbox files")
 
-    print(f"Loaded {len(image_list)} images with bounding boxes")
+    print(f"✓ Loaded {len(image_list)} images with bounding boxes")
     return image_list, bbox_list
 
 
@@ -186,17 +195,21 @@ def main():
     import argparse
 
     argument_parser = argparse.ArgumentParser(description='Train Stage 2: Damage Localization Model')
-    argument_parser.add_argument('--config', type=str, default='config/model_config.yaml',
+    argument_parser.add_argument('--config', type=str, default='config/modelconfig.yaml',
                         help='Path to configuration file')
     argument_parser.add_argument('--data', type=str, default=None,
-                        help='Path to your dataset (e.g., /path/to/CarDD_SOD)')
+                        help='Path to your dataset (e.g., C:\\path\\to\\CarDD_SOD)')
     argument_parser.add_argument('--epochs', type=int, default=EPOCHS,
                         help='Number of epochs to train')
     parsed_arguments = argument_parser.parse_args()
 
     data_path = parsed_arguments.data if parsed_arguments.data else DATA_DIR
-    
-    loaded_config = load_yaml_configuration(parsed_arguments.config)
+    print(f"Using dataset path: {data_path}")
+
+    try:
+        loaded_config = load_yaml_configuration(parsed_arguments.config)
+    except:
+        loaded_config = {'training': {}}
     
     Path(CHECKPOINT_DIR).mkdir(parents=True, exist_ok=True)
     Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
@@ -218,8 +231,8 @@ def main():
     )
 
     damage_detector = DamageLocalizationModel(
-        model_version=loaded_config['model'].get('name', 'm').lower()[-1],
-        use_pretrained_weights=loaded_config['model'].get('pretrained', True)
+        model_version=loaded_config['training'].get('model_version', 'm'),
+        use_pretrained_weights=loaded_config['training'].get('pretrained', True)
     )
     damage_detector.freeze_early_layers(freeze_fraction=0.75)
 
@@ -230,15 +243,20 @@ def main():
         validation_dataloader=dataloaders['val']
     )
 
+    print("="*60)
     print("Stage 2 Trainer initialized successfully")
     print(f"Training dataset: {len(dataloaders['train'].dataset)} images")
     print(f"Validation dataset: {len(dataloaders['val'].dataset)} images")
-    print(f"Starting training for {parsed_arguments.epochs} epochs...\n")
+    print(f"Starting training for {parsed_arguments.epochs} epochs...")
+    print("="*60)
 
     trainer.execute_training(total_epochs=parsed_arguments.epochs)
 
-    print(f"\nTraining completed! Best model saved to {CHECKPOINT_DIR}/best_localization_model.pt")
-    print(f"Performance logs saved to {LOG_DIR}/performance_logs.json")
+    print(f"\n{'='*60}")
+    print(f"✓ Training completed!")
+    print(f"✓ Best model saved to: {CHECKPOINT_DIR}/best_localization_model.pt")
+    print(f"✓ Performance logs saved to: {LOG_DIR}/performance_logs.json")
+    print(f"{'='*60}")
 
 
 if __name__ == '__main__':
