@@ -4,111 +4,112 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from config.constants import TRAIN_SPLIT, VAL_SPLIT, TEST_SPLIT, RANDOM_SEED
 
-class Stage2Dataset(Dataset):
-    def __init__(self, images: list, bboxes_list: list, preprocessor=None, transform=None):
-        self.images = images
-        self.bboxes_list = bboxes_list
-        self.preprocessor = preprocessor
-        self.transform = transform
+class Stage2DamageDataset(Dataset):
+    def __init__(self, image_list: list, bbox_list: list, image_preprocessor=None, data_augmentor=None):
+        self.image_list = image_list
+        self.bbox_list = bbox_list
+        self.image_preprocessor = image_preprocessor
+        self.data_augmentor = data_augmentor
 
-        assert len(images) == len(bboxes_list), "Image and bbox counts must match"
+        assert len(image_list) == len(bbox_list), "Image and bbox counts must match"
 
     def __len__(self):
-        return len(self.images)
+        return len(self.image_list)
 
-    def __getitem__(self, index):
-        image = self.images[index]
-        bboxes = self.bboxes_list[index]
+    def __getitem__(self, dataset_index):
+        current_image = self.image_list[dataset_index]
+        current_bboxes = self.bbox_list[dataset_index]
 
-        if self.preprocessor:
-            image = self.preprocessor.process(image)
+        if self.image_preprocessor:
+            current_image = self.image_preprocessor.process(current_image)
 
-        if self.transform:
-            image, bboxes = self.transform(image, bboxes)
+        if self.data_augmentor:
+            current_image, current_bboxes = self.data_augmentor.apply_augmentation(current_image, current_bboxes)
 
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1)
-
-        bboxes_tensor = torch.tensor(bboxes, dtype=torch.float32)
+        image_tensor = torch.from_numpy(current_image).permute(2, 0, 1)
+        bboxes_tensor = torch.tensor(current_bboxes, dtype=torch.float32)
 
         return {
             'image': image_tensor,
             'bboxes': bboxes_tensor,
-            'num_bboxes': len(bboxes)
+            'num_bboxes': len(current_bboxes)
         }
 
 
-class DataSplitter:
+class DatasetSplitter:
     @staticmethod
-    def split_data(images: list, bboxes_list: list, 
-                   train_split: float = TRAIN_SPLIT,
-                   val_split: float = VAL_SPLIT) -> dict:
-        train_images, temp_images, train_bboxes, temp_bboxes = train_test_split(
-            images, bboxes_list,
-            test_size=(1 - train_split),
+    def divide_into_splits(image_collection: list, bbox_collection: list, 
+                          training_fraction: float = TRAIN_SPLIT,
+                          validation_fraction: float = VAL_SPLIT) -> dict:
+        training_images, temporary_images, training_bboxes, temporary_bboxes = train_test_split(
+            image_collection, bbox_collection,
+            test_size=(1 - training_fraction),
             random_state=RANDOM_SEED
         )
 
-        val_ratio = val_split / (1 - train_split)
-        val_images, test_images, val_bboxes, test_bboxes = train_test_split(
-            temp_images, temp_bboxes,
-            test_size=(1 - val_ratio),
+        validation_ratio = validation_fraction / (1 - training_fraction)
+        validation_images, testing_images, validation_bboxes, testing_bboxes = train_test_split(
+            temporary_images, temporary_bboxes,
+            test_size=(1 - validation_ratio),
             random_state=RANDOM_SEED
         )
 
         return {
-            'train': (train_images, train_bboxes),
-            'val': (val_images, val_bboxes),
-            'test': (test_images, test_bboxes)
+            'train': (training_images, training_bboxes),
+            'val': (validation_images, validation_bboxes),
+            'test': (testing_images, testing_bboxes)
         }
 
     @staticmethod
-    def create_dataloaders(train_data: tuple, val_data: tuple, test_data: tuple,
-                          batch_size: int = 16,
-                          preprocessor=None, augmentor=None) -> dict:
-        train_dataset = Stage2Dataset(
-            train_data[0], train_data[1],
-            preprocessor=preprocessor,
-            transform=augmentor
+    def build_dataloaders(training_data_split: tuple, validation_data_split: tuple, 
+                         testing_data_split: tuple,
+                         batch_size_value: int = 16,
+                         image_preprocessor=None, 
+                         data_augmentor=None) -> dict:
+        training_dataset = Stage2DamageDataset(
+            training_data_split[0], training_data_split[1],
+            image_preprocessor=image_preprocessor,
+            data_augmentor=data_augmentor
         )
 
-        val_dataset = Stage2Dataset(
-            val_data[0], val_data[1],
-            preprocessor=preprocessor,
-            transform=None
+        validation_dataset = Stage2DamageDataset(
+            validation_data_split[0], validation_data_split[1],
+            image_preprocessor=image_preprocessor,
+            data_augmentor=None
         )
 
-        test_dataset = Stage2Dataset(
-            test_data[0], test_data[1],
-            preprocessor=preprocessor,
-            transform=None
+        testing_dataset = Stage2DamageDataset(
+            testing_data_split[0], testing_data_split[1],
+            image_preprocessor=image_preprocessor,
+            data_augmentor=None
         )
 
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=batch_size,
+        training_dataloader = DataLoader(
+            training_dataset,
+            batch_size=batch_size_value,
             shuffle=True,
             num_workers=4,
             pin_memory=True
         )
 
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=batch_size,
+        validation_dataloader = DataLoader(
+            validation_dataset,
+            batch_size=batch_size_value,
             shuffle=False,
             num_workers=4,
             pin_memory=True
         )
 
-        test_loader = DataLoader(
-            test_dataset,
-            batch_size=batch_size,
+        testing_dataloader = DataLoader(
+            testing_dataset,
+            batch_size=batch_size_value,
             shuffle=False,
             num_workers=4,
             pin_memory=True
         )
 
         return {
-            'train': train_loader,
-            'val': val_loader,
-            'test': test_loader
+            'train': training_dataloader,
+            'val': validation_dataloader,
+            'test': testing_dataloader
         }
