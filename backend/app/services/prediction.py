@@ -2,94 +2,85 @@ import os
 import sys
 import cv2
 import numpy as np
-import torch
-from ultralytics import YOLO
+import tensorflow as tf
+from keras.models import load_model
 import io
 from PIL import Image
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
-class Stage2DamageLocalizationDetector:
+class Stage1DamageClassifier:
     def __init__(self, model_path: str):
-        self.detection_network = YOLO(model_path)
+        self.model = load_model(model_path)
         self.target_image_size = (224, 224)
-        self.detection_confidence_threshold = 0.5
+        self.confidence_threshold = 0.5
 
-    def preprocess_image_for_detection(self, image_array: np.ndarray) -> np.ndarray:
-        resized_image = cv2.resize(image_array, self.target_image_size, interpolation=cv2.INTER_LINEAR)
-        normalized_image = resized_image.astype(np.float32) / 255.0
+    def load_image_from_path(self, image_path: str) -> np.ndarray:
+        image_data = cv2.imread(image_path)
+        if image_data is None:
+            raise ValueError(f"Cannot load image from {image_path}")
+        image_data = cv2.cvtColor(image_data, cv2.COLOR_BGR2RGB)
+        return image_data
+
+    def apply_canny_edge_detection(self, rgb_image: np.ndarray) -> np.ndarray:
+        gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+        edge_map = cv2.Canny(gray_image, 100, 200)
+        edge_map_rgb = cv2.cvtColor(edge_map, cv2.COLOR_GRAY2RGB)
+        return edge_map_rgb
+
+    def normalize_image_values(self, image_data: np.ndarray) -> np.ndarray:
+        normalized_image = image_data.astype(np.float32) / 255.0
         return normalized_image
 
-    def run_damage_detection(self, image_array: np.ndarray) -> dict:
-        preprocessed_image = self.preprocess_image_for_detection(image_array)
-        detection_results = self.detection_network.predict(
-            source=preprocessed_image,
-            conf=self.detection_confidence_threshold,
-            verbose=False
-        )
+    def create_six_channel_tensor(self, image_path: str) -> tuple:
+        original_image = self.load_image_from_path(image_path)
+        resized_image = cv2.resize(original_image, self.target_image_size, interpolation=cv2.INTER_LINEAR)
         
-        return self.extract_detection_results(detection_results, image_array.shape)
+        edge_image = self.apply_canny_edge_detection(resized_image)
+        
+        rgb_normalized = self.normalize_image_values(resized_image)
+        edge_normalized = self.normalize_image_values(edge_image)
+        
+        six_channel_tensor = np.concatenate([rgb_normalized, edge_normalized], axis=-1)
+        return np.expand_dims(six_channel_tensor, axis=0), original_image
 
-    def extract_detection_results(self, detection_results, original_image_shape: tuple) -> dict:
-        detected_damage_bboxes = []
-        extracted_damage_regions = []
+    def classify_damage_status(self, image_path: str) -> dict:
+        six_channel_input, original_image = self.create_six_channel_tensor(image_path)
         
-        if len(detection_results) == 0 or detection_results[0].boxes is None:
-            return {
-                'detected_damage_bboxes': [],
-                'extracted_damage_regions': [],
-                'damage_regions_count': 0
-            }
+        damage_prediction_output = self.model.predict(six_channel_input, verbose=0)
+        damage_probability_score = float(damage_prediction_output[0][0])
         
-        result_object = detection_results[0]
-        
-        for box_tensor in result_object.boxes:
-            bbox_coordinates = box_tensor.xyxy[0].cpu().numpy()
-            confidence_score = float(box_tensor.conf[0].cpu().numpy())
-            
-            x_min = int(bbox_coordinates[0])
-            y_min = int(bbox_coordinates[1])
-            x_max = int(bbox_coordinates[2])
-            y_max = int(bbox_coordinates[3])
-            
-            detected_damage_bboxes.append({
-                'x_min': x_min,
-                'y_min': y_min,
-                'x_max': x_max,
-                'y_max': y_max,
-                'confidence': round(confidence_score, 4),
-                'bbox_area': (x_max - x_min) * (y_max - y_min)
-            })
+        is_car_damaged = damage_probability_score >= self.confidence_threshold
+        damage_classification = "Damaged" if is_car_damaged else "Not Damaged"
         
         return {
-            'detected_damage_bboxes': detected_damage_bboxes,
-            'extracted_damage_regions': extracted_damage_regions,
-            'damage_regions_count': len(detected_damage_bboxes)
-        }
-
-    def localize_damages_in_image(self, image_array: np.ndarray) -> dict:
-        detection_output = self.run_damage_detection(image_array)
-        
-        return {
-            'stage2_status': 'completed',
-            'detected_damage_bboxes': detection_output['detected_damage_bboxes'],
-            'damage_regions_count': detection_output['damage_regions_count']
+            'stage1_classification': damage_classification,
+            'damage_probability_score': round(damage_probability_score, 4),
+            'is_car_damaged': is_car_damaged,
+            'original_image': original_image,
+            'original_image_shape': original_image.shape
         }
 
 
-class LocationService:
+class PredictionService:
     def __init__(self):
-        model_path = os.getenv('STAGE2_MODEL_PATH', 'Middleware/models/stage2/yoloBest.pt')
-        self.detector = Stage2DamageLocalizationDetector(model_path)
+        model_path = os.getenv('STAGE1_MODEL_PATH', 'Middleware/models/stage1/mobilenetv3_canny_final.keras')
+        self.classifier = Stage1DamageClassifier(model_path)
 
     def predict(self, img_bytes: bytes) -> dict:
         try:
             img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
             img_arr = np.array(img)
             
-            result = self.detector.localize_damages_in_image(img_arr)
+            temp_path = '/tmp/temp_stage1_image.jpg'
+            Image.fromarray(img_arr).save(temp_path)
+            
+            result = self.classifier.classify_damage_status(temp_path)
+            
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
             
             return result
         
         except Exception as e:
-            raise Exception(f"Stage 2 localization error: {str(e)}")
+            raise Exception(f"Stage 1 prediction error: {str(e)}")
