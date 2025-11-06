@@ -28,7 +28,7 @@ GRADIENT_CLIP_MAX_NORM = 1.0
 
 METRICS_DECIMAL_PLACES = 4
 
-DATA_DIR = "Middleware/models/stage2/data"
+DATA_DIR = r"C:\Users\Risha\Downloads\CarDD_release\CarDD_release\CarDD_SOD"
 RAW_DATA_DIR = f"{DATA_DIR}/raw"
 PROCESSED_DATA_DIR = f"{DATA_DIR}/processed"
 SPLIT_DATA_DIR = f"{DATA_DIR}/split"
