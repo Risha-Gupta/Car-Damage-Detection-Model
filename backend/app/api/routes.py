@@ -41,7 +41,7 @@ loc_svc = LocationService()
 def get_loc_svc():
     return loc_svc
 
-@router.post("locate")
+@router.post("/locate")
 async def locate_damage(
     file: UploadFile = File(...),
     svc: LocationService = Depends(get_loc_svc)
