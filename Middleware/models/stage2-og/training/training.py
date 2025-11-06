@@ -11,7 +11,7 @@ import cv2
 from os import listdir
 from os.path import join, isfile
 
-from models.yolov8_detector import DamageLocalizationModel
+from final-models.yolov8_detector import DamageLocalizationModel
 from data_pipeline.preprocessing import ImagePreprocessor, BboxProcessor
 from data_pipeline.augmentation import DataAugmentor
 from data_pipeline.loader import DatasetSplitter, Stage2DamageDataset
