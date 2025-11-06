@@ -34,8 +34,11 @@ PROCESSED_DATA_DIR = f"{DATA_DIR}/processed"
 SPLIT_DATA_DIR = f"{DATA_DIR}/split"
 CHECKPOINT_DIR = "Middleware/models/stage2/models/checkpoints"
 LOG_DIR = "Middleware/models/stage2/logs"
-REPORT_OUTPUT = "Damage_Detection_Report.xlsx"
+REPORT_OUTPUT = "Middleware/models/stage2/Damage_Localization_Report.xlsx"
 
 LOG_INTERVAL = 10
 PROFILE_INFERENCE = True
 SAVE_BEST_MODEL = True
+
+STAGE1_MODEL_PATH = "Middleware/models/stage1/mobilenetv3_canny_best.keras"
+STAGE1_DAMAGE_THRESHOLD = 0.5
