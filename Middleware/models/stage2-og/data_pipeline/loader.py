@@ -1,115 +1,73 @@
-import numpy as np
-from sklearn.model_selection import train_test_split
-import torch
-from torch.utils.data import Dataset, DataLoader
-from config.constants import TRAIN_SPLIT, VAL_SPLIT, TEST_SPLIT, RANDOM_SEED
-
-class Stage2DamageDataset(Dataset):
-    def __init__(self, image_list: list, bbox_list: list, image_preprocessor=None, data_augmentor=None):
-        self.image_list = image_list
-        self.bbox_list = bbox_list
-        self.image_preprocessor = image_preprocessor
-        self.data_augmentor = data_augmentor
-
-        assert len(image_list) == len(bbox_list), "Image and bbox counts must match"
-
-    def __len__(self):
-        return len(self.image_list)
-
-    def __getitem__(self, dataset_index):
-        current_image = self.image_list[dataset_index]
-        current_bboxes = self.bbox_list[dataset_index]
-
-        if self.image_preprocessor:
-            current_image = self.image_preprocessor.process(current_image)
-
-        if self.data_augmentor:
-            current_image, current_bboxes = self.data_augmentor.apply_augmentation(current_image, current_bboxes)
-
-        image_tensor = torch.from_numpy(current_image).permute(2, 0, 1)
-        bboxes_tensor = torch.tensor(current_bboxes, dtype=torch.float32)
-
-        return {
-            'image': image_tensor,
-            'bboxes': bboxes_tensor,
-            'num_bboxes': len(current_bboxes)
-        }
-
-
-class DatasetSplitter:
-    @staticmethod
-    def divide_into_splits(image_collection: list, bbox_collection: list, 
-                          training_fraction: float = TRAIN_SPLIT,
-                          validation_fraction: float = VAL_SPLIT) -> dict:
-        training_images, temporary_images, training_bboxes, temporary_bboxes = train_test_split(
-            image_collection, bbox_collection,
-            test_size=(1 - training_fraction),
-            random_state=RANDOM_SEED
-        )
-
-        validation_ratio = validation_fraction / (1 - training_fraction)
-        validation_images, testing_images, validation_bboxes, testing_bboxes = train_test_split(
-            temporary_images, temporary_bboxes,
-            test_size=(1 - validation_ratio),
-            random_state=RANDOM_SEED
-        )
-
-        return {
-            'train': (training_images, training_bboxes),
-            'val': (validation_images, validation_bboxes),
-            'test': (testing_images, testing_bboxes)
-        }
-
-    @staticmethod
-    def build_dataloaders(training_data_split: tuple, validation_data_split: tuple, 
-                         testing_data_split: tuple,
-                         batch_size_value: int = 16,
-                         image_preprocessor=None, 
-                         data_augmentor=None) -> dict:
-        training_dataset = Stage2DamageDataset(
-            training_data_split[0], training_data_split[1],
-            image_preprocessor=image_preprocessor,
-            data_augmentor=data_augmentor
-        )
-
-        validation_dataset = Stage2DamageDataset(
-            validation_data_split[0], validation_data_split[1],
-            image_preprocessor=image_preprocessor,
-            data_augmentor=None
-        )
-
-        testing_dataset = Stage2DamageDataset(
-            testing_data_split[0], testing_data_split[1],
-            image_preprocessor=image_preprocessor,
-            data_augmentor=None
-        )
-
-        training_dataloader = DataLoader(
-            training_dataset,
-            batch_size=batch_size_value,
-            shuffle=True,
-            num_workers=4,
-            pin_memory=True
-        )
-
-        validation_dataloader = DataLoader(
-            validation_dataset,
-            batch_size=batch_size_value,
-            shuffle=False,
-            num_workers=4,
-            pin_memory=True
-        )
-
-        testing_dataloader = DataLoader(
-            testing_dataset,
-            batch_size=batch_size_value,
-            shuffle=False,
-            num_workers=4,
-            pin_memory=True
-        )
-
-        return {
-            'train': training_dataloader,
-            'val': validation_dataloader,
-            'test': testing_dataloader
-        }
+{
+  "name": "my-v0-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@radix-ui/react-accordion": "1.2.2",
+    "@radix-ui/react-alert-dialog": "1.1.4",
+    "@radix-ui/react-aspect-ratio": "1.1.1",
+    "@radix-ui/react-avatar": "1.1.2",
+    "@radix-ui/react-checkbox": "1.1.3",
+    "@radix-ui/react-collapsible": "1.1.2",
+    "@radix-ui/react-context-menu": "2.2.4",
+    "@radix-ui/react-dialog": "1.1.4",
+    "@radix-ui/react-dropdown-menu": "2.1.4",
+    "@radix-ui/react-hover-card": "1.1.4",
+    "@radix-ui/react-label": "2.1.1",
+    "@radix-ui/react-menubar": "1.1.4",
+    "@radix-ui/react-navigation-menu": "1.2.3",
+    "@radix-ui/react-popover": "1.1.4",
+    "@radix-ui/react-progress": "1.1.1",
+    "@radix-ui/react-radio-group": "1.2.2",
+    "@radix-ui/react-scroll-area": "1.2.2",
+    "@radix-ui/react-select": "2.1.4",
+    "@radix-ui/react-separator": "1.1.1",
+    "@radix-ui/react-slider": "1.2.2",
+    "@radix-ui/react-slot": "1.1.1",
+    "@radix-ui/react-switch": "1.1.2",
+    "@radix-ui/react-tabs": "1.1.2",
+    "@radix-ui/react-toast": "1.2.4",
+    "@radix-ui/react-toggle": "1.1.1",
+    "@radix-ui/react-toggle-group": "1.1.1",
+    "@radix-ui/react-tooltip": "1.1.6",
+    "@vercel/analytics": "1.3.1",
+    "autoprefixer": "^10.4.20",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "1.0.4",
+    "date-fns": "4.1.0",
+    "embla-carousel-react": "8.5.1",
+    "input-otp": "1.4.1",
+    "lucide-react": "^0.454.0",
+    "next": "16.0.0",
+    "next-themes": "^0.4.6",
+    "react": "19.2.0",
+    "react-day-picker": "9.8.0",
+    "react-dom": "19.2.0",
+    "react-hook-form": "^7.60.0",
+    "react-resizable-panels": "^2.1.7",
+    "recharts": "2.15.4",
+    "sonner": "^1.7.4",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
+    "vaul": "^0.9.9",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.9",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "postcss": "^8.5",
+    "tailwindcss": "^4.1.9",
+    "tw-animate-css": "1.3.3",
+    "typescript": "^5"
+  }
+}

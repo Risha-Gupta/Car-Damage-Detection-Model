@@ -59,6 +59,28 @@ class ImagePreprocessor:
         six_channel_input = np.concatenate([rgb_normalized, edge_normalized], axis=-1)
         return six_channel_input
 
+def process_single_image_simple(image_path: str, target_size: Tuple[int, int] = INPUT_SIZE) -> np.ndarray:
+    """
+    Load and process a single image for inference.
+    
+    Args:
+        image_path: Path to image file
+        target_size: Target size tuple (height, width)
+    
+    Returns:
+        Processed image as numpy array ready for model inference
+    """
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"Cannot load image from {image_path}")
+    
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = cv2.resize(image, target_size, interpolation=cv2.INTER_LINEAR)
+    
+    # Normalize
+    image = image.astype(np.float32) / 255.0
+    
+    return image
 
 class BboxProcessor:
     def __init__(self, original_image_height: int, original_image_width: int, 
