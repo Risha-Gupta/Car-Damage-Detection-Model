@@ -1,78 +1,74 @@
 import torch
-import torch.nn as nn
 from ultralytics import YOLO
 from pathlib import Path
 from config.constants import MODEL_NAME, PRETRAINED, INPUT_SIZE, NUM_CLASSES
 
-class YOLOv8Detector:
-    def __init__(self, model_size: str = "m", pretrained: bool = PRETRAINED):
-        self.model_size = model_size
-        self.pretrained = pretrained
+class DamageLocalizationModel:
+    def __init__(self, model_version: str = "m", use_pretrained_weights: bool = PRETRAINED):
+        self.model_version = model_version
+        self.use_pretrained_weights = use_pretrained_weights
 
-        model_name = f'yolov8{model_size}.pt' if pretrained else f'yolov8{model_size}.yaml'
-        self.model = YOLO(model_name)
+        model_identifier = f'yolov8{model_version}.pt' if use_pretrained_weights else f'yolov8{model_version}.yaml'
+        self.detection_network = YOLO(model_identifier)
 
         self.frozen_layer_count = 0
         self.trainable_layer_count = 0
-        self._count_layers()
+        self._calculate_layer_counts()
 
-    def _count_layers(self):
-        for param in self.model.model.parameters():
-            if param.requires_grad:
+    def _calculate_layer_counts(self):
+        for parameter in self.detection_network.model.parameters():
+            if parameter.requires_grad:
                 self.trainable_layer_count += 1
 
-    def freeze_backbone(self, freeze_percentage: float = 0.75):
-        total_layers = len(list(self.model.model.model))
-        freeze_until = int(total_layers * freeze_percentage)
+    def freeze_early_layers(self, freeze_fraction: float = 0.75):
+        total_layer_count = len(list(self.detection_network.model.model))
+        freeze_until_layer = int(total_layer_count * freeze_fraction)
 
-        for layer in self.model.model.model[:freeze_until]:
-            for param in layer.parameters():
-                param.requires_grad = False
+        for layer_module in self.detection_network.model.model[:freeze_until_layer]:
+            for parameter in layer_module.parameters():
+                parameter.requires_grad = False
 
-        self.frozen_layer_count = freeze_until
+        self.frozen_layer_count = freeze_until_layer
 
-    def unfreeze_backbone(self, unfreeze_percentage: float = 0.5):
-        total_layers = len(list(self.model.model.model))
-        unfreeze_from = int(total_layers * (1 - unfreeze_percentage))
+    def unfreeze_layers_progressively(self, unfreeze_fraction: float = 0.5):
+        total_layer_count = len(list(self.detection_network.model.model))
+        unfreeze_from_layer = int(total_layer_count * (1 - unfreeze_fraction))
 
-        for layer in self.model.model.model[unfreeze_from:]:
-            for param in layer.parameters():
-                param.requires_grad = True
+        for layer_module in self.detection_network.model.model[unfreeze_from_layer:]:
+            for parameter in layer_module.parameters():
+                parameter.requires_grad = True
 
-        self.frozen_layer_count = unfreeze_from
+        self.frozen_layer_count = unfreeze_from_layer
 
-    def get_frozen_status(self) -> dict:
-        frozen_param_count = sum(1 for p in self.model.model.parameters() if not p.requires_grad)
-        trainable_param_count = sum(1 for p in self.model.model.parameters() if p.requires_grad)
+    def get_freezing_status(self) -> dict:
+        frozen_parameter_count = sum(1 for p in self.detection_network.model.parameters() if not p.requires_grad)
+        trainable_parameter_count = sum(1 for p in self.detection_network.model.parameters() if p.requires_grad)
+        total_parameter_count = frozen_parameter_count + trainable_parameter_count
 
         return {
-            'frozen': frozen_param_count,
-            'trainable': trainable_param_count,
-            'total': frozen_param_count + trainable_param_count,
-            'trainable_percentage': (trainable_param_count / (frozen_param_count + trainable_param_count)) * 100
+            'frozen': frozen_parameter_count,
+            'trainable': trainable_parameter_count,
+            'total': total_parameter_count,
+            'trainable_percentage': (trainable_parameter_count / total_parameter_count) * 100 if total_parameter_count > 0 else 0
         }
 
-    def set_learning_rate(self, learning_rate: float):
-        self.model.lr = learning_rate
+    def set_learning_rate_value(self, learning_rate_value: float):
+        self.detection_network.lr = learning_rate_value
 
-    def get_model(self):
-        return self.model
+    def get_model_instance(self):
+        return self.detection_network
 
-    def save_checkpoint(self, filepath: str):
-        self.model.save(filepath)
+    def save_model_checkpoint(self, checkpoint_filepath: str):
+        self.detection_network.save(checkpoint_filepath)
 
-    def load_checkpoint(self, filepath: str):
-        self.model = YOLO(filepath)
+    def load_model_checkpoint(self, checkpoint_filepath: str):
+        self.detection_network = YOLO(checkpoint_filepath)
 
-    def get_architecture_info(self) -> dict:
+    def get_model_information(self) -> dict:
         return {
             'model_name': MODEL_NAME,
             'input_size': INPUT_SIZE,
             'num_classes': NUM_CLASSES,
-            'parameters': sum(p.numel() for p in self.model.model.parameters()),
-            'trainable_parameters': sum(p.numel() for p in self.model.model.parameters() if p.requires_grad),
+            'total_parameters': sum(p.numel() for p in self.detection_network.model.parameters()),
+            'trainable_parameters': sum(p.numel() for p in self.detection_network.model.parameters() if p.requires_grad),
         }
-
-
-class ModelComparison:
-    pass
