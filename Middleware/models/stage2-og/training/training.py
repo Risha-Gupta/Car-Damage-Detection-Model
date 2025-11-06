@@ -5,53 +5,33 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import yaml
 import time
 from pathlib import Path
-from typing import Dict, Tuple
-import tensorflow as tf
+from typing import Dict
+import numpy as np
+import cv2
+from os import listdir
+from os.path import join, isfile
 
 from models.yolov8_detector import DamageLocalizationModel
 from data_pipeline.preprocessing import ImagePreprocessor, BboxProcessor
 from data_pipeline.augmentation import DataAugmentor
-from data_pipeline.loader import DatasetSplitter
+from data_pipeline.loader import DatasetSplitter, Stage2DamageDataset
 from logging.performance_logger import PerformanceLogger
 from logging.excel_reporter import ExcelReporter
 from config.constants import (
     EPOCHS, BATCH_SIZE, LEARNING_RATE, WEIGHT_DECAY,
     EARLY_STOPPING_PATIENCE, GRADIENT_CLIP_MAX_NORM,
-    STAGE1_MODEL_PATH, STAGE1_DAMAGE_THRESHOLD
+    DATA_DIR, CHECKPOINT_DIR, LOG_DIR, REPORT_OUTPUT,
+    AUGMENTATION_CONFIG, INPUT_SIZE
 )
-
-class Stage1BinaryClassifier:
-    def __init__(self, model_path: str = STAGE1_MODEL_PATH):
-        self.stage1_model = tf.keras.models.load_model(model_path)
-        self.damage_threshold = STAGE1_DAMAGE_THRESHOLD
-
-    def predict_damage_binary(self, image_array: np.ndarray) -> tuple:
-        image_resized = tf.image.resize(image_array, (224, 224))
-        image_normalized = image_resized / 255.0
-        
-        gray_image = tf.image.rgb_to_grayscale(image_resized)
-        edges = cv2.Canny(gray_image.numpy().astype(np.uint8) * 255, 100, 200)
-        edges_rgb = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
-        edges_normalized = edges_rgb / 255.0
-        
-        combined_input = tf.concat([image_normalized, edges_normalized], axis=-1)
-        combined_input = tf.expand_dims(combined_input, 0)
-        
-        prediction_score = self.stage1_model.predict(combined_input)[0][0]
-        is_damaged = prediction_score >= self.damage_threshold
-        
-        return is_damaged, float(prediction_score)
 
 
 class DamageLocalizationTrainer:
     def __init__(self, detector_model: DamageLocalizationModel, training_config: Dict,
-                 training_dataloader, validation_dataloader,
-                 stage1_classifier: Stage1BinaryClassifier = None):
+                 training_dataloader, validation_dataloader):
         self.detector_model = detector_model
         self.training_configuration = training_config
         self.training_dataloader = training_dataloader
         self.validation_dataloader = validation_dataloader
-        self.stage1_classifier = stage1_classifier
 
         self.bbox_loss_function = nn.SmoothL1Loss()
 
@@ -76,13 +56,16 @@ class DamageLocalizationTrainer:
         self.performance_tracker = PerformanceLogger()
         self.result_exporter = ExcelReporter()
 
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f"Using device: {self.device}")
+
     def train_single_epoch(self, epoch_number: int) -> float:
         self.detector_model.get_model_instance().train()
         cumulative_epoch_loss = 0
 
         for batch_index, batch_content in enumerate(self.training_dataloader):
-            image_tensor = batch_content['image'].to('cuda' if torch.cuda.is_available() else 'cpu')
-            bbox_tensor = batch_content['bboxes'].to('cuda' if torch.cuda.is_available() else 'cpu')
+            image_tensor = batch_content['image'].to(self.device)
+            bbox_tensor = batch_content['bboxes'].to(self.device)
 
             batch_timer_start = time.time()
 
@@ -114,8 +97,8 @@ class DamageLocalizationTrainer:
 
         with torch.no_grad():
             for batch_content in self.validation_dataloader:
-                image_tensor = batch_content['image'].to('cuda' if torch.cuda.is_available() else 'cpu')
-                bbox_tensor = batch_content['bboxes'].to('cuda' if torch.cuda.is_available() else 'cpu')
+                image_tensor = batch_content['image'].to(self.device)
+                bbox_tensor = batch_content['bboxes'].to(self.device)
 
                 predicted_bboxes = self.detector_model.get_model_instance()(image_tensor)
                 computed_loss = self.bbox_loss_function(predicted_bboxes, bbox_tensor)
@@ -126,7 +109,7 @@ class DamageLocalizationTrainer:
         if average_validation_loss < self.best_validation_loss_value:
             self.best_validation_loss_value = average_validation_loss
             self.patience_counter = 0
-            self.detector_model.save_model_checkpoint('models/checkpoints/best_localization_model.pt')
+            self.detector_model.save_model_checkpoint(f'{CHECKPOINT_DIR}/best_localization_model.pt')
         else:
             self.patience_counter += 1
 
@@ -160,7 +143,7 @@ class DamageLocalizationTrainer:
                 print("Early stopping triggered due to no improvement")
                 break
 
-        self.performance_tracker.export_json()
+        self.performance_tracker.export_to_json_file()
         print(self.performance_tracker.get_performance_summary())
 
 
@@ -170,24 +153,90 @@ def load_yaml_configuration(config_filepath: str) -> Dict:
     return loaded_configuration
 
 
+def load_image_and_bbox_data(data_directory: str) -> tuple:
+    image_list = []
+    bbox_list = []
+
+    raw_directory = join(data_directory, 'raw')
+    
+    if not Path(raw_directory).exists():
+        raise ValueError(f"Data directory {raw_directory} does not exist. Please place your training images and bbox files in {raw_directory}")
+
+    for filename in listdir(raw_directory):
+        if filename.endswith(('.jpg', '.jpeg', '.png')):
+            image_path = join(raw_directory, filename)
+            bbox_path = join(raw_directory, filename.replace(filename.split('.')[-1], 'txt'))
+            
+            if isfile(bbox_path):
+                image_array = cv2.imread(image_path)
+                if image_array is not None:
+                    with open(bbox_path, 'r') as bbox_file:
+                        bboxes = [list(map(float, line.strip().split())) for line in bbox_file if line.strip()]
+                    image_list.append(image_array)
+                    bbox_list.append(bboxes)
+
+    if len(image_list) == 0:
+        raise ValueError(f"No images found in {raw_directory}. Expected image files with corresponding .txt bbox files")
+
+    print(f"Loaded {len(image_list)} images with bounding boxes")
+    return image_list, bbox_list
+
+
 def main():
     import argparse
-    import numpy as np
-    import cv2
 
     argument_parser = argparse.ArgumentParser(description='Train Stage 2: Damage Localization Model')
     argument_parser.add_argument('--config', type=str, default='config/model_config.yaml',
                         help='Path to configuration file')
+    argument_parser.add_argument('--data', type=str, default=DATA_DIR,
+                        help='Path to data directory')
+    argument_parser.add_argument('--epochs', type=int, default=EPOCHS,
+                        help='Number of epochs to train')
     parsed_arguments = argument_parser.parse_args()
 
     loaded_config = load_yaml_configuration(parsed_arguments.config)
+    
+    Path(CHECKPOINT_DIR).mkdir(parents=True, exist_ok=True)
+    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
 
-    damage_detector = DamageLocalizationModel(model_version='m', use_pretrained_weights=True)
+    image_collection, bbox_collection = load_image_and_bbox_data(parsed_arguments.data)
+
+    image_preprocessor = ImagePreprocessor(target_size=INPUT_SIZE)
+    data_augmentor = DataAugmentor(augmentation_settings=AUGMENTATION_CONFIG)
+
+    data_splits = DatasetSplitter.divide_into_splits(image_collection, bbox_collection)
+    
+    dataloaders = DatasetSplitter.build_dataloaders(
+        training_data_split=data_splits['train'],
+        validation_data_split=data_splits['val'],
+        testing_data_split=data_splits['test'],
+        batch_size_value=loaded_config['training'].get('batch_size', BATCH_SIZE),
+        image_preprocessor=image_preprocessor,
+        data_augmentor=data_augmentor
+    )
+
+    damage_detector = DamageLocalizationModel(
+        model_version=loaded_config['model'].get('name', 'm').lower()[-1],
+        use_pretrained_weights=loaded_config['model'].get('pretrained', True)
+    )
     damage_detector.freeze_early_layers(freeze_fraction=0.75)
 
-    stage1_damage_classifier = Stage1BinaryClassifier(model_path=STAGE1_MODEL_PATH)
+    trainer = DamageLocalizationTrainer(
+        detector_model=damage_detector,
+        training_config=loaded_config['training'],
+        training_dataloader=dataloaders['train'],
+        validation_dataloader=dataloaders['val']
+    )
 
     print("Stage 2 Trainer initialized successfully")
+    print(f"Training dataset: {len(dataloaders['train'].dataset)} images")
+    print(f"Validation dataset: {len(dataloaders['val'].dataset)} images")
+    print(f"Starting training for {parsed_arguments.epochs} epochs...\n")
+
+    trainer.execute_training(total_epochs=parsed_arguments.epochs)
+
+    print(f"\nTraining completed! Best model saved to {CHECKPOINT_DIR}/best_localization_model.pt")
+    print(f"Performance logs saved to {LOG_DIR}/performance_logs.json")
 
 
 if __name__ == '__main__':
