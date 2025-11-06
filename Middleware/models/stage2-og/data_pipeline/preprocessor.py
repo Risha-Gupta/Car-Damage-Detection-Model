@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import tensorflow as tf
+import os
 from typing import Tuple
 from config.constants import INPUT_SIZE
 
@@ -58,6 +59,36 @@ class ImagePreprocessor:
         
         six_channel_input = np.concatenate([rgb_normalized, edge_normalized], axis=-1)
         return six_channel_input
+
+    @staticmethod
+    def load_dataset_from_external_path(dataset_path: str) -> Tuple[list, list]:
+        """Load images and bboxes from external dataset path (Windows/Unix compatible)."""
+        if not os.path.exists(dataset_path):
+            raise ValueError(f"Dataset path does not exist: {dataset_path}")
+        
+        images = []
+        bboxes = []
+        
+        for filename in os.listdir(dataset_path):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
+                image_path = os.path.join(dataset_path, filename)
+                bbox_path = os.path.join(dataset_path, os.path.splitext(filename)[0] + '.txt')
+                
+                try:
+                    image = cv2.imread(image_path)
+                    if image is not None:
+                        images.append(image_path)
+                        
+                        if os.path.exists(bbox_path):
+                            with open(bbox_path, 'r') as f:
+                                bbox_data = [list(map(int, line.split())) for line in f.readlines()]
+                            bboxes.append(bbox_data)
+                        else:
+                            bboxes.append([])
+                except Exception as e:
+                    print(f"Error loading {image_path}: {e}")
+        
+        return images, bboxes
 
 def process_single_image_simple(image_path: str, target_size: Tuple[int, int] = INPUT_SIZE) -> np.ndarray:
     """
