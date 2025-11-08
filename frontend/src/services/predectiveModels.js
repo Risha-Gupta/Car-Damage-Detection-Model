@@ -19,3 +19,12 @@ export const getDamagedAreas = (IMAGE) => {
         }
     });
 }
+export const getDamageTypes = (IMAGE) => {
+    const formData = new FormData();
+    formData.append('file', IMAGE); 
+    return axios.post(PIPELINE_API_BASE_URL + "/segment", formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
