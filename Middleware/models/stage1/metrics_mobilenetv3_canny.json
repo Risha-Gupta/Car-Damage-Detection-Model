@@ -3,12 +3,12 @@
   "total_epochs": 15,
   "initial_epochs": 15,
   "finetune_epochs": 0,
-  "final_val_accuracy": 0.8447204828262329,
-  "final_val_precision": 0.9369369149208069,
-  "final_val_recall": 0.738898754119873,
-  "final_val_auc": 0.9410248398780823,
-  "best_val_accuracy": 0.8553682565689087,
-  "best_val_auc": 0.9410248398780823,
+  "final_val_accuracy": 0.747116208076477,
+  "final_val_precision": 0.6658711433410645,
+  "final_val_recall": 0.9911190271377563,
+  "final_val_auc": 0.9416704773902893,
+  "best_val_accuracy": 0.8669033050537109,
+  "best_val_auc": 0.9428104162216187,
   "class_weights": {
     "0": 1.000222024866785,
     "1": 0.9997780736795384

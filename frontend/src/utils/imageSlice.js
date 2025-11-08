@@ -4,7 +4,7 @@ const imageSlice = createSlice({
     name: "image",
     initialState: {
         image: null,
-        step: 0,
+        step: 1,
         finished: false,
     },
     reducers: {

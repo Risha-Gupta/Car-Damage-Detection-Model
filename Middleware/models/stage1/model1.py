@@ -4,7 +4,28 @@ from keras.applications import MobileNetV3Small
 from keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-import cv2, numpy as np, os, json, keras
+import cv2, numpy as np, os, json
+
+# -----------------------------
+# CUSTOM LAYER TO REPLACE LAMBDA
+# -----------------------------
+class ChannelSlice(layers.Layer):
+    """Custom layer to slice channels - serializes properly across Python versions"""
+    def __init__(self, start_channel, end_channel, **kwargs):
+        super().__init__(**kwargs)
+        self.start_channel = start_channel
+        self.end_channel = end_channel
+    
+    def call(self, inputs):
+        return inputs[:, :, :, self.start_channel:self.end_channel]
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "start_channel": self.start_channel,
+            "end_channel": self.end_channel
+        })
+        return config
 
 # -----------------------------
 # CONFIG
@@ -13,7 +34,7 @@ IMG_SIZE = (224, 224)
 BATCH_SIZE = 32
 INITIAL_EPOCHS = 15
 FINE_TUNE_EPOCHS = 10
-BASE_PATH = "Middleware/"
+BASE_PATH = "../Middleware/"
 MODEL_NAME = "mobilenetv3_canny"
 
 DAMAGED_DIR = os.path.join(BASE_PATH, "dataset/CarDD_COCO/train")
@@ -118,7 +139,7 @@ def tf_preprocess_wrapper(path, label, augment):
         func=_func,
         inp=[path, label, augment],
         Tout=[tf.float32, tf.int32]
-    ) # pyright: ignore[reportGeneralTypeIssues]
+    )
     
     combined.set_shape([*IMG_SIZE, 6])  
     label.set_shape([])
@@ -145,9 +166,9 @@ val_ds = (tf.data.Dataset.from_tensor_slices((val_paths, val_labels))
 # Create custom input layer for 6 channels
 input_layer = layers.Input(shape=(*IMG_SIZE, 6))
 
-# Split into RGB and edges
-rgb_channels = layers.Lambda(lambda x: x[:, :, :, :3])(input_layer)
-edge_channels = layers.Lambda(lambda x: x[:, :, :, 3:])(input_layer)
+# Split into RGB and edges using custom layer (NO LAMBDA!)
+rgb_channels = ChannelSlice(0, 3, name='rgb_slice')(input_layer)
+edge_channels = ChannelSlice(3, 6, name='edge_slice')(input_layer)
 
 # Process RGB through pretrained MobileNetV3
 base_model = MobileNetV3Small(weights="imagenet", include_top=False, input_shape=(*IMG_SIZE, 3))
@@ -215,7 +236,7 @@ history = model.fit(
     train_ds, 
     validation_data=val_ds, 
     epochs=INITIAL_EPOCHS, 
-    class_weight=class_weight,  # Use class weights
+    class_weight=class_weight,
     callbacks=callbacks_initial
 )
 

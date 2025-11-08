@@ -43,7 +43,7 @@ const ProgressStepper = ({ currentStep, setCurrentStep }) => {
                 </span>
             </div>
             {index < steps.length - 1 && (
-                <div className="flex-1 h-1 mx-4 mt-[-20px]">
+                <div className="flex-1 h-1 mx-4 -mt-5">
                 <div className={`h-full transition-all duration-300 ${
                     step.number < currentStep ? 'bg-green-500' : 'bg-gray-300'
                 }`} />

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from app.services.prediction import PredictionService
 from app.services.locate import LocationService
+from app.services.segmentation import SegmentationService
 
 router = APIRouter()
 
@@ -41,7 +42,7 @@ loc_svc = LocationService()
 def get_loc_svc():
     return loc_svc
 
-@router.post("/damage/locate")
+@router.post("/locate")
 async def locate_damage(
     file: UploadFile = File(...),
     svc: LocationService = Depends(get_loc_svc)
@@ -63,6 +64,29 @@ async def locate_damage(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during localization: {str(e)}")
 
+def get_seg_svc():
+    return seg_svc
+seg_svc = SegmentationService()
+@router.post("/segment")
+async def segment_damage(
+    file: UploadFile = File(...),
+    svc: SegmentationService = Depends(get_seg_svc)
+    ):
+    """Run segmentation to find and mask damaged areas"""
+    try:
+        img_bytes = await file.read()
+        result = svc.predict(img_bytes)
+
+        return {
+            "success": True,
+            "filename": file.filename,
+            "stage": 3,
+            "result": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during segmentation: {str(e)}")
+    
 @router.get("/health")
 async def health_check():
     return {"status": "healthy"}

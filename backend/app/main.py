@@ -1,14 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
-
+from fastapi.staticfiles import StaticFiles
 app = FastAPI(
     title="Car Damage Detection",
     description="API for detecting damage in images",
     version="1.0.0"
 )
 
-# CORS middleware
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../output")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -18,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api", tags=["predictions"])
+app.mount("/api/output", StaticFiles(directory=OUTPUT_DIR), name="output")
 
 @app.get("/")
 async def root():
