@@ -1,0 +1,76 @@
+model:
+  name: "Faster R-CNN ResNet50"
+  framework: "Detectron2"
+  backbone: "ResNet50"
+  pretrained: true
+  input_size: [512, 512]
+  num_classes: 6  # Updated for 6 damage classes (dent, scratch, crack, glass shatter, lamp broken, tire flat)
+  confidence_threshold: 0.5
+  nms_threshold: 0.5
+
+training:
+  epochs: 50
+  batch_size: 16
+  learning_rate: 0.0001
+  weight_decay: 0.001  # L2 regularization - prevents overfitting
+  early_stopping_patience: 10
+  gradient_clip: 1.0
+  
+  unfreeze_schedule:
+    first_unfreeze_epoch: 15  # Unfreeze middle layers
+    second_unfreeze_epoch: 35  # Unfreeze all layers
+    lr_reduction_factor: 0.1
+  
+  # Learning rate scheduler
+  scheduler:
+    type: "ReduceLROnPlateau"
+    factor: 0.1
+    patience: 3
+    min_lr: 0.00001
+
+data:
+  train_split: 0.70
+  val_split: 0.15
+  test_split: 0.15
+  random_seed: 42
+  
+  dataset_type: "coco"
+  dataset_root: "/kaggle/input/car-dd/CarDD_release/CarDD_COCO"
+  train_annotation: "annotations/instances_train2017.json"
+  val_annotation: "annotations/instances_val2017.json"
+  test_annotation: "annotations/instances_test2017.json"
+  
+  augmentation:
+    horizontal_flip: 0.5
+    vertical_flip: 0.0
+    rotation_limit: 15
+    brightness_limit: 0.3
+    contrast_limit: 0.3
+    gaussian_noise: 0.3
+    image_normalization: "imagenet"  # ImageNet statistics
+  
+  preprocessing:
+    normalize: true
+    target_size: [512, 512]
+
+regularization:
+  dropout: 0.3  # ROI head dropout
+  batch_norm: true
+  l2_weight_decay: 0.001
+  
+  focal_loss:
+    enabled: true
+    alpha: 0.25
+    gamma: 2.0
+
+logging:
+  excel_output: "/kaggle/working/Damage_Detection_Report.xlsx"  # Kaggle output path
+  log_interval: 10  # Log every N batches
+  save_best_model: true
+  profile_inference: true
+  metrics_decimal_places: 4  # Four-digit accuracy
+
+performance_tracking:
+  record_execution_time: true
+  measure_time_loss: true
+  stage_profiling: true
