@@ -6,7 +6,11 @@ tensorflow
 numpy
 python-dotenv
 <<<<<<< HEAD
+<<<<<<< HEAD
 ultralytics==8.0.0
+=======
+ultralytics=>8.0.0
+>>>>>>> eee233a0f959e954db7d6f3cff2a278bc061a1b1
 =======
 ultralytics=>8.0.0
 >>>>>>> eee233a0f959e954db7d6f3cff2a278bc061a1b1
