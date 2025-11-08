@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { increment, decrement } from "../utils/imageSlice";
 import Predictor from "./Predictor"
 import Locator from "./Locator";
+import Classifier from "./Classifier";
 const Body = ({currentStep, setCurrentStep}) => {
     const step = useSelector((state) => state.image.step);
     const dispatch = useDispatch();
@@ -21,6 +22,8 @@ const Body = ({currentStep, setCurrentStep}) => {
                 return <Predictor onNext={handleNextStage} />;
             case 2:
                 return <Locator onBack={handlePrevStage} onNext={handleNextStage} />;
+            case 3:
+                return <Classifier onBack={handlePrevStage} onNext={handleNextStage}/>
             default:
                 return <Predictor onNext={handleNextStage} />;
         }

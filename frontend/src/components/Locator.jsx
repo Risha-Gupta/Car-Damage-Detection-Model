@@ -123,7 +123,7 @@ const Locator = ({ onBack, onNext }) => {
                                 onClick={onNext}
                                 className="mt-6 w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
                             >
-                                Proceed to Cost Estimation
+                                Proceed to Classification
                                 <ArrowRight size={20} />
                             </button>
                         </>
@@ -137,6 +137,13 @@ const Locator = ({ onBack, onNext }) => {
                                 className="bg-blue-500 text-white py-2 px-6 rounded-lg font-medium hover:bg-blue-600 transition-colors"
                             >
                                 Try Another Image
+                            </button>
+                            <button
+                                onClick={onNext}
+                                className="mt-6 w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                            >
+                                Proceed to Classification
+                                <ArrowRight size={20} />
                             </button>
                         </div>
                     )}
