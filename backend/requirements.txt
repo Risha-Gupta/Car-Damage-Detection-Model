@@ -5,15 +5,7 @@ pillow
 tensorflow
 numpy
 python-dotenv
-<<<<<<< HEAD
-<<<<<<< HEAD
 ultralytics==8.0.0
-=======
-ultralytics=>8.0.0
->>>>>>> eee233a0f959e954db7d6f3cff2a278bc061a1b1
-=======
-ultralytics=>8.0.0
->>>>>>> eee233a0f959e954db7d6f3cff2a278bc061a1b1
 opencv-python>=4.8.0
 pillow>=10.0.0
 pandas>=2.0.0
@@ -21,3 +13,4 @@ openpyxl>=3.1.0
 albumentations>=1.3.0
 matplotlib>=3.7.0
 tensorboard>=2.14.0
+opencv-python

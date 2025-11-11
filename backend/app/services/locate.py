@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 from ultralytics import YOLO
-
+import torch
 class Stage2DamageLocalizationDetector:
     def __init__(self, model_path: str, output_dir: str, device: str | int = "cpu"):
         # Resolve model path absolutely
@@ -114,11 +114,10 @@ class Stage2DamageLocalizationDetector:
 
 class LocationService:
     def __init__(self):
-        # Resolve project root: backend/app/services -> up three levels
         here = Path(__file__).resolve()
         project_root = here.parents[3]  # Car-Damage-Detection-Model/
 
-        model_path = project_root / "Middleware/models/stage2/best.pt"
+        model_path = project_root / "Middleware/models/stage2/models/model_final.pth"
         output_dir = project_root / "output/stage2"
 
         # Pick device explicitly; change to 0 if you have a GPU
