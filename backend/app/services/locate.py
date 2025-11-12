@@ -117,7 +117,7 @@ class LocationService:
         here = Path(__file__).resolve()
         project_root = here.parents[3]  # Car-Damage-Detection-Model/
 
-        model_path = project_root / "Middleware/models/stage2/models/model_final.pth"
+        model_path = project_root / "Middleware/models/stage2/models/model_weights.pt"
         output_dir = project_root / "output/stage2"
 
         # Pick device explicitly; change to 0 if you have a GPU

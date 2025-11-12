@@ -1,6 +1,6 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from app.services.prediction import PredictionService, Stage4DamageClassifier, DetectronModelService
-from app.services.locate import LocationService
+from app.services.locate2 import LocationService
 from app.services.segmentation import SegmentationService
 import numpy as np
 from PIL import Image
@@ -172,7 +172,6 @@ async def predict_damage_pipeline(
         )
 
 
-# Existing individual stage endpoints (kept for testing/debugging)
 @router.post("/predict-stage1")
 async def predict_damage(
     file: UploadFile = File(...),

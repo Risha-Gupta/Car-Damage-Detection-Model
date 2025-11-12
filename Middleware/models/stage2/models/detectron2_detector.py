@@ -5,9 +5,10 @@ from detectron2 import model_zoo
 from detectron2.config import get_cfg
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.modeling import build_model
+from detectron2.config import config as detectron2_config
 
 from config.constants import MODEL_NAME, INPUT_SIZE, NUM_CLASSES, METRICS_DECIMAL_PLACES
-
+torch.serialization.add_safe_globals([detectron2_config.CfgNode])
 class DamageLocalizationModel:
     """
     Detectron2-based damage localization model using Faster R-CNN with ResNet50 backbone.
