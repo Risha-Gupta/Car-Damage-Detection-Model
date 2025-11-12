@@ -1,3 +1,5 @@
 /Middleware/dataset
 /Middleware/models/stage3/data
 /venv
+__pycache__
+test.py
