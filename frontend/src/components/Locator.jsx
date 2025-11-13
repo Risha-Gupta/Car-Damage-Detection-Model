@@ -59,13 +59,13 @@ const Locator = ({ onBack, onNext }) => {
                 {loading ? 'Analyzing...' : 'Run Localization Analysis'}
             </button>
 
-            {localizationResult?.annotated_image && (
+            {localizationResult?.result.annotated_image_path && (
                 <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-3">
                         Detected Damage Localization
                     </h3>
                     <img 
-                        src={`${PIPELINE_API_BASE_URL}${localizationResult.annotated_image}`}
+                        src={`${PIPELINE_API_BASE_URL}${localizationResult.result.annotated_image_path}`}
                         alt="Annotated damage localization"
                         className="w-full h-auto rounded-lg shadow-md"
                         onError={(e) => {
@@ -74,7 +74,7 @@ const Locator = ({ onBack, onNext }) => {
                         }}
                     />
                     <p className="text-sm text-gray-600 mt-2 text-center">
-                        {localizationResult.damage_regions_count} damage area{localizationResult.damage_regions_count !== 1 ? 's' : ''} detected
+                        {localizationResult.result.damage_regions_count} damage area{localizationResult.result.damage_regions_count !== 1 ? 's' : ''} detected
                     </p>
                 </div>
             )}
@@ -85,16 +85,16 @@ const Locator = ({ onBack, onNext }) => {
                         Localization Results
                     </h3>
                     
-                    {localizationResult.damage_regions_count > 0 ? (
+                    {localizationResult.result.damage_regions_count > 0 ? (
                         <>
                             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                                 <p className="text-blue-800 font-medium">
-                                    Total Detections: {localizationResult.damage_regions_count}
+                                    Total Detections: {localizationResult.result.damage_regions_count}
                                 </p>
                             </div>
 
                             <div className="space-y-4">
-                                {localizationResult.detected_damage_bboxes.map((bbox, idx) => (
+                                {localizationResult.result.detected_damage_bboxes.map((bbox, idx) => (
                                     <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                         <div className="flex justify-between items-start mb-3">
                                             <p className="font-medium text-gray-800">
@@ -137,13 +137,6 @@ const Locator = ({ onBack, onNext }) => {
                                 className="bg-blue-500 text-white py-2 px-6 rounded-lg font-medium hover:bg-blue-600 transition-colors"
                             >
                                 Try Another Image
-                            </button>
-                            <button
-                                onClick={onNext}
-                                className="mt-6 w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
-                            >
-                                Proceed to Classification
-                                <ArrowRight size={20} />
                             </button>
                         </div>
                     )}

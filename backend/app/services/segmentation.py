@@ -199,7 +199,7 @@ class SegmentationService:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(
             base_dir, 
-            '../../../Middleware/models/stage3/best2.pt'
+            '../../../Middleware/models/stage3/models/best2.pt'
         )
         self.output_dir = os.path.join(base_dir, '../../../output/segmentation')
         
