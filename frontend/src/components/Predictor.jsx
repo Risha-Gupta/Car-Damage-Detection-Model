@@ -157,7 +157,7 @@ const Predictor = ({onNext}) => {
                             onClick={handleProceed}
                             className="mt-4 w-full bg-blue-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
                         >
-                            Proceed to Damage Analysis
+                            Proceed to Damage Localization
                             <ArrowRight size={20} />
                         </button>
                     )}
