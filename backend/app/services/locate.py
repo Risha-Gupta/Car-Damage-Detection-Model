@@ -8,7 +8,6 @@ from PIL import Image
 import torch
 import sys
 
-# Add stage2 to path
 stage2_dir = Path(__file__).resolve().parents[3] / "Middleware/models/stage2"
 sys.path.insert(0, str(stage2_dir))
 try:

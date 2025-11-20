@@ -28,3 +28,12 @@ export const getDamageTypes = (IMAGE) => {
         }
     });
 }
+export const classifyDamage = (IMAGE) => {
+    const formData = new FormData();
+    formData.append('file', IMAGE); 
+    return axios.post(PIPELINE_API_BASE_URL + "/classify", formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
