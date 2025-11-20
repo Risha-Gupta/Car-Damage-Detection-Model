@@ -48,10 +48,10 @@ const SeverityAnalyzer = ({ onBack, onNext }) => {
         setClassificationResult(null);
 
         try {
-            const response = await classifyDamage(image)
-            const data = response.data
+            const res = await classifyDamage(image)
+            const data = res.data;
             setClassificationResult(data);
-            console.log('Classification result:', data);
+            console.log("Updated Stage 4:", data)
         } catch (error) {
             console.error('Classification error:', error);
             setError('Failed to classify damage. Please try again.');
@@ -60,218 +60,208 @@ const SeverityAnalyzer = ({ onBack, onNext }) => {
         }
     };
 
+    if (!classificationResult) {
+        return (
+            <div className="space-y-6">
+                <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6">
+                    <h2 className="text-xl font-semibold text-indigo-800 mb-3">
+                        🎯 Stage 4: Damage Classification & Severity Analysis
+                    </h2>
+                    <p className="text-indigo-700">
+                        Analyzing damage severity, type, coverage, repair priority, and the exact part of the car affected.
+                    </p>
+                </div>
+
+                {error && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 flex items-start gap-3">
+                        <AlertCircle className="text-red-600 shrink-0" size={24} />
+                        <p className="text-red-700">{error}</p>
+                    </div>
+                )}
+
+                <button
+                    onClick={handleClassify}
+                    className="w-full bg-indigo-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-indigo-600 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+                    disabled={loading || !image}
+                >
+                    {loading && <Loader2 className="animate-spin" />}
+                    {loading ? 'Classifying Damage...' : 'Run Damage Classification'}
+                </button>
+
+                <button
+                    onClick={onBack}
+                    className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+                >
+                    <ArrowLeft size={20} />
+                    Back to Segmentation
+                </button>
+            </div>
+        );
+    }
+
+    const result = classificationResult.result;
+
     return (
         <div className="space-y-6">
-            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-indigo-800 mb-3">
-                    🎯 Stage 4: Damage Classification & Severity Analysis
-                </h2>
-                <p className="text-indigo-700">
-                    Analyzing damage severity, type, coverage, and repair priority...
-                </p>
+            {/* MAIN SUMMARY CARD */}
+            <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-lg">
+                <div className="flex items-center gap-2 mb-6">
+                    <CheckCircle className="text-green-600" size={24} />
+                    <h3 className="text-xl font-semibold text-gray-800">
+                        Classification Complete
+                    </h3>
+                </div>
+
+                {/* Severity */}
+                <div className={`mb-6 p-4 rounded-lg border-2 ${getSeverityColor(result.severity)}`}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium opacity-75 mb-1">Damage Severity</p>
+                            <p className="text-2xl font-bold capitalize">
+                                {result.severity}
+                            </p>
+                        </div>
+                        <div className="text-5xl">
+                            {result.severity === 'minor' ? '✓' : 
+                             result.severity === 'moderate' ? '⚠️' : '🚨'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* METRICS GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {/* Damage Type */}
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <p className="text-sm text-purple-700 font-medium mb-2">Damage Type</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-3xl">{getDamageTypeIcon(result.damage_type)}</span>
+                            <p className="text-xl font-bold text-purple-900 capitalize">
+                                {result.damage_type.replace('_', ' ')}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Priority */}
+                    <div className={`p-4 rounded-lg border ${getPriorityColor(result.repair_priority)}`}>
+                        <p className="text-sm font-medium opacity-75 mb-2">Repair Priority</p>
+                        <p className="text-xl font-bold capitalize">
+                            {result.repair_priority}
+                        </p>
+                    </div>
+
+                    {/* Coverage */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <p className="text-sm text-blue-700 font-medium mb-2">Damage Coverage</p>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-3xl font-bold text-blue-900">
+                                {result.coverage_percent}
+                            </p>
+                            <span className="text-xl text-blue-700">%</span>
+                        </div>
+                        <div className="mt-2 bg-blue-200 rounded-full h-2">
+                            <div 
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(result.coverage_percent, 100)}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Detection Count */}
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <p className="text-sm text-green-700 font-medium mb-2">Damage Regions</p>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-3xl font-bold text-green-900">
+                                {result.merged_results.length}
+                            </p>
+                            <span className="text-xl text-green-700">
+                                region{result.merged_results.length !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {error && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 flex items-start gap-3">
-                    <AlertCircle className="text-red-600 shrink-0" size={24} />
-                    <p className="text-red-700">{error}</p>
+            {/* ROI SECTION */}
+            {result.roi_images && result.roi_images.length > 0 && (
+                <div className="bg-white border-2 border-indigo-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        🔍 Zoomed Damage Regions ({result.roi_images.length})
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {result.roi_images.map((roi, idx) => (
+                            <div key={idx} className="bg-gray-50 border border-gray-300 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                                <div className="relative">
+                                    <img 
+                                        src={`data:image/jpeg;base64,${roi.base64}`}
+                                        alt={`ROI ${roi.roi_id}`}
+                                        className="w-full h-48 object-cover"
+                                    />
+                                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
+                                        ROI #{roi.roi_id}
+                                    </div>
+                                </div>
+                                
+                                <div className="p-3 space-y-2">
+                                    {/* PART NAME */}
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-gray-700 capitalize">
+                                            {(roi.part_detected?.class_name) || "Unknown part"}
+                                        </span>
+                                        {roi.part_detected?.confidence && (
+                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">
+                                                {(roi.part_detected.confidence * 100).toFixed(1)}%
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="text-xs text-gray-600 space-y-1">
+                                        <p><strong>BBox:</strong> {roi.damage_bbox?.join(", ")}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
+
+            {/* Action Recommendations */}
+            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6">
+                <h4 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
+                    💡 Recommended Actions
+                </h4>
+                <ul className="space-y-2 text-indigo-800">
+                    {result.repair_priority === 'high' &&
+                        <li><span className="text-red-600 font-bold">•</span> Immediate repair recommended</li>
+                    }
+                    {result.repair_priority === 'medium' &&
+                        <li><span className="text-orange-600 font-bold">•</span> Schedule repair within 2–4 weeks</li>
+                    }
+                    {result.repair_priority === 'low' &&
+                        <li><span className="text-blue-600 font-bold">•</span> Can be handled during routine maintenance</li>
+                    }
+                    <li><span className="text-green-600 font-bold">•</span> Document the damage for insurance</li>
+                </ul>
+            </div>
 
             <button
-                onClick={handleClassify}
-                className="w-full bg-indigo-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-indigo-600 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-                disabled={loading || !image}
+                onClick={onNext}
+                className="w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
             >
-                {loading ? <Loader2 className="animate-spin" /> : null}
-                {loading ? 'Classifying Damage...' : 'Run Damage Classification'}
+                Complete Analysis
+                <ArrowRight size={20} />
             </button>
-
-            {classificationResult && (
-                <div className="space-y-6">
-                    {/* Main Classification Card */}
-                    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-lg">
-                        <div className="flex items-center gap-2 mb-6">
-                            <CheckCircle className="text-green-600" size={24} />
-                            <h3 className="text-xl font-semibold text-gray-800">
-                                Classification Complete
-                            </h3>
-                        </div>
-                        
-                        {/* Severity Badge */}
-                        <div className={`mb-6 p-4 rounded-lg border-2 ${getSeverityColor(classificationResult.result.damage_severity)}`}>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium opacity-75 mb-1">Damage Severity</p>
-                                    <p className="text-2xl font-bold capitalize">
-                                        {classificationResult.result.damage_severity}
-                                    </p>
-                                </div>
-                                <div className="text-5xl">
-                                    {classificationResult.result.damage_severity === 'minor' ? '✓' : 
-                                     classificationResult.result.damage_severity === 'moderate' ? '⚠️' : '🚨'}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Grid of Metrics */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Damage Type */}
-                            <div className="bg-linear-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                                <p className="text-sm text-purple-700 font-medium mb-2">Damage Type</p>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-3xl">{getDamageTypeIcon(classificationResult.result.damage_type)}</span>
-                                    <p className="text-xl font-bold text-purple-900 capitalize">
-                                        {classificationResult.result.damage_type.replace('_', ' ')}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Repair Priority */}
-                            <div className={`p-4 rounded-lg border ${getPriorityColor(classificationResult.result.repair_priority)}`}>
-                                <p className="text-sm font-medium opacity-75 mb-2">Repair Priority</p>
-                                <p className="text-xl font-bold capitalize">
-                                    {classificationResult.result.repair_priority}
-                                </p>
-                            </div>
-
-                            {/* Coverage Percentage */}
-                            <div className="bg-linear-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                                <p className="text-sm text-blue-700 font-medium mb-2">Damage Coverage</p>
-                                <div className="flex items-baseline gap-2">
-                                    <p className="text-3xl font-bold text-blue-900">
-                                        {classificationResult.result.damage_coverage_percent}
-                                    </p>
-                                    <span className="text-xl text-blue-700">%</span>
-                                </div>
-                                <div className="mt-2 bg-blue-200 rounded-full h-2">
-                                    <div 
-                                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                                        style={{ width: `${Math.min(classificationResult.result.damage_coverage_percent, 100)}%` }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Detection Count */}
-                            <div className="bg-linear-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                                <p className="text-sm text-green-700 font-medium mb-2">Regions Detected</p>
-                                <div className="flex items-baseline gap-2">
-                                    <p className="text-3xl font-bold text-green-900">
-                                        {classificationResult.result.detection_count}
-                                    </p>
-                                    <span className="text-xl text-green-700">
-                                        region{classificationResult.result.detection_count !== 1 ? 's' : ''}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {classificationResult.result.roi_images && classificationResult.result.roi_images.length > 0 && (
-                        <div className="bg-white border-2 border-indigo-200 rounded-lg p-6">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                                🔍 Zoomed Damage Regions ({classificationResult.result.roi_count})
-                            </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {classificationResult.result.roi_images.map((roi, idx) => (
-                                    <div key={idx} className="bg-gray-50 border border-gray-300 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                                        <div className="relative">
-                                            <img 
-                                                src={`data:image/jpeg;base64,${roi.base64}`}
-                                                alt={`ROI ${roi.roi_id}`}
-                                                className="w-full h-48 object-cover"
-                                            />
-                                            <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
-                                                ROI #{roi.roi_id}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="p-3 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium text-gray-700">
-                                                    {roi.class_name}
-                                                </span>
-                                                {roi.confidence && (
-                                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">
-                                                        {(roi.confidence * 100).toFixed(1)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                            
-                                            <div className="text-xs text-gray-600 space-y-1">
-                                                <p>
-                                                    <strong>Dimensions:</strong> {roi.roi_dimensions.width} × {roi.roi_dimensions.height}px
-                                                </p>
-                                                <p>
-                                                    <strong>Area:</strong> {roi.bbox_area.toLocaleString()}px²
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Action Recommendations */}
-                    <div className="bg-linear-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-lg p-6">
-                        <h4 className="font-semibold text-indigo-900 mb-3 flex items-center gap-2">
-                            💡 Recommended Actions
-                        </h4>
-                        <ul className="space-y-2 text-indigo-800">
-                            {classificationResult.result.repair_priority === 'high' && (
-                                <li className="flex items-start gap-2">
-                                    <span className="text-red-600 font-bold">•</span>
-                                    <span>Immediate repair required - Schedule assessment ASAP</span>
-                                </li>
-                            )}
-                            {classificationResult.result.repair_priority === 'medium' && (
-                                <li className="flex items-start gap-2">
-                                    <span className="text-orange-600 font-bold">•</span>
-                                    <span>Schedule repair within 2-4 weeks</span>
-                                </li>
-                            )}
-                            {classificationResult.result.repair_priority === 'low' && (
-                                <li className="flex items-start gap-2">
-                                    <span className="text-blue-600 font-bold">•</span>
-                                    <span>Minor repair - can be addressed during routine maintenance</span>
-                                </li>
-                            )}
-                            {classificationResult.result.damage_coverage_percent > 10 && (
-                                <li className="flex items-start gap-2">
-                                    <span className="text-purple-600 font-bold">•</span>
-                                    <span>Large affected area - consider professional inspection</span>
-                                </li>
-                            )}
-                            <li className="flex items-start gap-2">
-                                <span className="text-green-600 font-bold">•</span>
-                                <span>Document all findings for insurance or maintenance records</span>
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Navigation Buttons */}
-                    <div className="flex gap-4">
-                        <button
-                            onClick={onNext}
-                            className="flex-1 bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
-                        >
-                            Complete Analysis
-                            <ArrowRight size={20} />
-                        </button>
-                    </div>
-                </div>
-            )}
 
             <button
                 onClick={onBack}
                 className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
             >
                 <ArrowLeft size={20} />
-                Back to Segmentation
+                Back
             </button>
         </div>
     );
-}
+};
 
 export default SeverityAnalyzer;
