@@ -1,5 +1,6 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
-from app.services.prediction import PredictionService, Stage4DamageClassifier, DetectronModelService
+from app.services.prediction import PredictionService, DetectronModelService
+from app.services.stage4_classifier import Stage4DamageClassifier
 from app.services.locate import LocationService
 from app.services.segmentation import SegmentationService
 import numpy as np
@@ -78,100 +79,6 @@ async def predict_with_detectron(file: UploadFile = File(...)):
         if temp_file_path and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
-# @router.post("/predict")
-# async def predict_damage_pipeline(
-#     file: UploadFile = File(...)
-# ):
-#     """
-#     Full damage detection pipeline: Stage 1 -> Stage 2 -> Stage 3 -> Stage 4
-    
-#     Stage 1 (Prediction): Binary classification - is the image damaged?
-#     Stage 2 (Localization): Detect bounding boxes of damage regions
-#     Stage 3 (Segmentation): Create detailed masks of damaged areas
-#     Stage 4 (Classification): Classify damage type, severity, and repair priority
-    
-#     Input: Single image file
-#     Output: Complete damage report with all stages' results
-#     """
-#     if not file.content_type.startswith('image/'):
-#         raise HTTPException(
-#             status_code=400,
-#             detail="File must be an image"
-#         )
-    
-#     try:
-#         # Read image bytes once for all stages
-#         img_bytes = await file.read()
-        
-#         # ========== STAGE 1: Binary Damage Classification ==========
-#         stage1_result = pred_svc.predict(img_bytes)
-        
-#         # If no damage detected, short-circuit and return early
-#         if not stage1_result["is_damaged"]:
-#             return {
-#                 "success": True,
-#                 "filename": file.filename,
-#                 "pipeline_status": "no_damage_detected",
-#                 "stage_1_classification": stage1_result,
-#                 "stages_2_3_4": None
-#             }
-        
-#         # ========== STAGE 2: Damage Localization ==========
-#         stage2_result = loc_svc.predict(img_bytes)
-        
-#         # ========== STAGE 3: Segmentation ==========
-#         stage3_result = seg_svc.predict(img_bytes)
-        
-#         # ========== STAGE 4: Damage Classification & Severity ==========
-#         # Prepare image array for metrics calculation
-#         img_pil = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-#         img_np = np.array(img_pil)
-#         img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-        
-#         stage4_result = classifier_svc.classify_damage(
-#             segmentation_data=stage3_result,
-#             bbox_data=stage2_result,
-#             image_array=img_bgr
-#         )
-        
-#         # ========== Compile Full Pipeline Response ==========
-#         return {
-#             "success": True,
-#             "filename": file.filename,
-#             "pipeline_status": "completed",
-#             "stage_1_classification": {
-#                 "is_damaged": stage1_result["is_damaged"],
-#                 "confidence": stage1_result["confidence"],
-#                 "status": stage1_result["status"]
-#             },
-#             "stage_2_localization": {
-#                 "detected_damage_bboxes": stage2_result.get("detected_damage_bboxes", []),
-#                 "damage_regions_count": stage2_result.get("damage_regions_count", 0),
-#                 "annotated_image_path": stage2_result.get("annotated_image_path", None)
-#             },
-#             "stage_3_segmentation": {
-#                 "detections": stage3_result.get("detections", []),
-#                 "detection_count": stage3_result.get("detection_count", 0),
-#                 "has_masks": stage3_result.get("has_segmentation_masks", False),
-#                 "annotated_image": stage3_result.get("annotated_image", None)
-#             },
-#             "stage_4_classification": stage4_result,
-#             "summary": {
-#                 "overall_damage_status": "damaged" if stage1_result["is_damaged"] else "not_damaged",
-#                 "severity": stage4_result.get("damage_severity"),
-#                 "repair_priority": stage4_result.get("repair_priority"),
-#                 "damage_type": stage4_result.get("damage_type"),
-#                 "coverage_percent": stage4_result.get("damage_coverage_percent")
-#             }
-#         }
-    
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Error processing image through pipeline: {str(e)}"
-#         )
-
-
 @router.post("/predict")
 async def predict_damage(
     file: UploadFile = File(...),
@@ -228,7 +135,7 @@ async def locate_damage(
 async def segment_damage(
     file: UploadFile = File(...),
     svc: SegmentationService = Depends(get_seg_svc)
-    ):
+):
     """Stage 3 only: Segmentation and mask detection"""
     try:
         img_bytes = await file.read()
@@ -243,6 +150,58 @@ async def segment_damage(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during segmentation: {str(e)}")
+
+@router.post("/classify-damage")
+async def classify_damage(
+    segmentation_data: dict,
+    bbox_data: dict,
+    image_file: UploadFile = File(...)
+):
+    """
+    Stage 4 only: Classify damage severity, type, and repair priority.
+    
+    Expects:
+    - segmentation_data: Output from /segment endpoint (Stage 3)
+    - bbox_data: Output from /locate endpoint (Stage 2)
+    - image_file: Original image file for coverage metrics
+    
+    Returns:
+    - damage_severity: "minor", "moderate", or "severe"
+    - damage_type: "scratch", "crack", "dent", or "no_damage"
+    - damage_coverage_percent: Percentage of image covered by damage
+    - repair_priority: "high", "medium", or "low"
+    - detection_count: Number of damage detections
+    """
+    if not image_file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=400,
+            detail="File must be an image"
+        )
+    
+    try:
+        img_bytes = await image_file.read()
+        img_pil = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        img_np = np.array(img_pil)
+        img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        
+        result = classifier_svc.classify_damage(
+            segmentation_data=segmentation_data,
+            bbox_data=bbox_data,
+            image_array=img_bgr
+        )
+        
+        return {
+            "success": True,
+            "filename": image_file.filename,
+            "stage": 4,
+            "result": result
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error during Stage 4 classification: {str(e)}"
+        )
 
 @router.get("/health")
 async def health_check():
