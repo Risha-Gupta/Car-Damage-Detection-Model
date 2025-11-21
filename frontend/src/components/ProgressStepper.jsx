@@ -1,9 +1,14 @@
 import React from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { setStep } from '../utils/imageSlice'; 
-const ProgressStepper = ({ currentStep, setCurrentStep }) => {
+
+const ProgressStepper = () => {
+
     const dispatch = useDispatch();
-    
+
+    const currentStep = useSelector((state) => state.image.step);
+    const stepStatus = useSelector((state) => state.image.stepStatus);
+
     const steps = [
         { number: 1, label: 'Stage 1' },
         { number: 2, label: 'Stage 2' },
@@ -13,44 +18,90 @@ const ProgressStepper = ({ currentStep, setCurrentStep }) => {
     ];
 
     const handleStepClick = (stepNumber) => {
-        setCurrentStep(stepNumber)
         dispatch(setStep(stepNumber));
     };
 
     return (
-        <div className="flex items-center justify-between mb-8">
-        {steps.map((step, index) => (
-            <React.Fragment key={step.number}>
-            <div className="flex flex-col items-center">
-                <div
-                onClick={() => handleStepClick(step.number)}
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-lg transition-all duration-300 cursor-pointer ${
-                    step.number < currentStep
-                    ? 'bg-green-500 text-white hover:bg-green-600 hover:scale-110 hover:shadow-lg'
-                    : step.number === currentStep
-                    ? 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-110 hover:shadow-lg hover:rotate-6'
-                    : 'bg-gray-300 text-gray-600 hover:bg-gray-400 hover:scale-105 hover:shadow-md'
-                } active:scale-95`}
-                >
-                {step.number < currentStep ? '✓' : step.number}
-                </div>
-                <span 
-                onClick={() => handleStepClick(step.number)}
-                className={`mt-2 text-sm font-medium cursor-pointer transition-all duration-200 ${
-                step.number <= currentStep ? 'text-gray-900 hover:text-blue-600 hover:scale-105' : 'text-gray-500 hover:text-gray-700 hover:scale-105'
-                }`}>
-                {step.label}
-                </span>
+        <div className="w-48 shrink-0 min-h-screen bg-gray-50 p-6 border-r border-gray-200">
+            <div className="flex flex-col items-center space-y-2">
+                {steps.map((step, index) => {
+
+                    const status = stepStatus[step.number];
+
+                    const isFailed = status === "failed";
+                    const isDone = status === "success";
+                    const isActive = currentStep === step.number;
+                    const isProcessing = status === "processing";
+
+                    let circleStyle = "";
+                    let displaySymbol = step.number;
+
+                    if (isFailed) {
+                        displaySymbol = "✗";
+                        circleStyle = "bg-red-500 text-white hover:bg-red-600";
+                    }
+                    else if (isDone) {
+                        displaySymbol = "✓";
+                        circleStyle = "bg-green-500 text-white hover:bg-green-600";
+                    }
+                    else if (isProcessing) {
+                        displaySymbol = step.number;
+                        circleStyle = "bg-yellow-400 text-black animate-pulse";
+                    }
+                    else if (isActive) {
+                        circleStyle = "bg-blue-500 text-white hover:bg-blue-600";
+                    }
+                    else {
+                        circleStyle = "bg-gray-300 text-gray-600 hover:bg-gray-400";
+                    }
+
+                    return (
+                        <React.Fragment key={step.number}>
+                            <div className="flex flex-col items-center">
+                                <div
+                                    onClick={() => handleStepClick(step.number)}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center 
+                                        font-semibold text-lg transition-all duration-300 cursor-pointer
+                                        ${circleStyle} hover:scale-110 active:scale-95`}
+                                >
+                                    {displaySymbol}
+                                </div>
+
+                                <span
+                                    onClick={() => handleStepClick(step.number)}
+                                    className={`mt-2 text-sm font-medium cursor-pointer transition-all duration-200 
+                                        ${
+                                            isFailed
+                                                ? "text-red-600"
+                                                : isDone
+                                                    ? "text-green-700"
+                                                    : isActive
+                                                        ? "text-blue-700"
+                                                        : "text-gray-500"
+                                        }`}
+                                >
+                                    {step.label}
+                                </span>
+                            </div>
+
+                            {/* Vertical connector line */}
+                            {index < steps.length - 1 && (
+                                <div className="w-1 h-8">
+                                    <div
+                                        className={`w-full h-full transition-all duration-300 rounded ${
+                                            isFailed
+                                                ? "bg-red-500"
+                                                : isDone
+                                                    ? "bg-green-500"
+                                                    : "bg-gray-300"
+                                        }`}
+                                    />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
             </div>
-            {index < steps.length - 1 && (
-                <div className="flex-1 h-1 mx-4 -mt-5">
-                <div className={`h-full transition-all duration-300 ${
-                    step.number < currentStep ? 'bg-green-500' : 'bg-gray-300'
-                }`} />
-                </div>
-            )}
-            </React.Fragment>
-        ))}
         </div>
     );
 };

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Upload, Loader2, ArrowRight, ArrowLeft} from 'lucide-react';
 import { getIsDamaged } from '../services/predectiveModels';
-import { setImage } from '../utils/imageSlice'; 
+import { setImage, setStepStatus } from '../utils/imageSlice'; 
 import { fileStore } from '../utils/fileStore';
 const Predictor = ({onNext}) => {
     const dispatch = useDispatch();
@@ -40,12 +40,20 @@ const Predictor = ({onNext}) => {
         setLoading(true);
         setResult('');
         setPrediction(null);
-
+        dispatch(setStepStatus({ step: 1, status: "processing" }));
         try {
             const response = await getIsDamaged(selectedImage);
             const data = response.data.result;
+            console.log(data)
             setPrediction(data);
+            console.log(prediction)
             setResult(`Prediction complete for "${selectedImage.name}"`);
+            if(data.is_damaged)
+                dispatch(setStepStatus({ step: 1, status: "success" }));
+
+            else
+                dispatch(setStepStatus({ step: 1, status: "success" }));
+
         } catch (error) {
             console.error('Prediction error:', error);
             setResult('Failed to get prediction. Please try again.');

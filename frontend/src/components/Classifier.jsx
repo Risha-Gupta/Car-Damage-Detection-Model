@@ -3,8 +3,10 @@ import { useState } from "react";
 import { getDamageTypes } from "../services/predectiveModels"; 
 import { PIPELINE_API_BASE_URL } from "../../public/constants";
 import { fileStore } from "../utils/fileStore";
-
+import { useDispatch } from "react-redux";
+import { setStepStatus } from "../utils/imageSlice";
 const Classifier = ({ onBack, onNext }) => {
+    const dispatch = useDispatch()
     const [loading, setLoading] = useState(false);
     const [segmentationResult, setSegmentationResult] = useState(null);
     const [error, setError] = useState(null);
@@ -19,11 +21,15 @@ const Classifier = ({ onBack, onNext }) => {
         setLoading(true);
         setError(null);
         setSegmentationResult(null);
-
+        dispatch(setStepStatus({ step: 3, status: "processing" }))
         try {
             const response = await getDamageTypes(image);
             const data = response.data;
             setSegmentationResult(data);
+            if(data.result.detection_count>0)
+                dispatch(setStepStatus({ step: 3, status: "success" }))
+            else 
+                dispatch(setStepStatus({ step: 3, status: "failed" }))
             console.log(data);
         } catch (error) {
             console.error('Segmentation error:', error);

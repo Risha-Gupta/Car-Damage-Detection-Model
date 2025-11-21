@@ -32,7 +32,7 @@ const Body = ({currentStep, setCurrentStep}) => {
         }
     };
     return (
-        <div>
+        <div className="flex-1">
             {renderStage()}
         </div>
     )

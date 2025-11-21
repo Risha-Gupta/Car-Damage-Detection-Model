@@ -3,8 +3,10 @@ import { useState } from "react";
 import { getDamagedAreas } from "../services/predectiveModels"; 
 import { PIPELINE_API_BASE_URL } from "../../public/constants";
 import { fileStore } from "../utils/fileStore";
-
+import { setStepStatus } from "../utils/imageSlice";
+import { useDispatch } from "react-redux";
 const Locator = ({ onBack, onNext }) => {
+    const dispatch = useDispatch()
     const [loading, setLoading] = useState(false);
     const [localizationResult, setLocalizationResult] = useState(null);
     const [error, setError] = useState(null);
@@ -19,12 +21,16 @@ const Locator = ({ onBack, onNext }) => {
         setLoading(true);
         setError(null);
         setLocalizationResult(null);
-
+        dispatch(setStepStatus({ step: 2, status: "processing" }))
         try {
             const response = await getDamagedAreas(image);
             const data = response.data;
             setLocalizationResult(data);
             console.log(data);
+            if(data.result.damage_regions_count>0)
+                dispatch(setStepStatus({ step: 2, status: "success" }))
+            else
+                dispatch(setStepStatus({ step: 2, status: "failed" }))
         } catch (error) {
             console.error('Localization error:', error);
             setError('Failed to analyze damage areas. Please try again.');
@@ -92,7 +98,6 @@ const Locator = ({ onBack, onNext }) => {
                                     Total Detections: {localizationResult.result.damage_regions_count}
                                 </p>
                             </div>
-
                             <div className="space-y-4">
                                 {localizationResult.result.detected_damage_bboxes.map((bbox, idx) => (
                                     <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
