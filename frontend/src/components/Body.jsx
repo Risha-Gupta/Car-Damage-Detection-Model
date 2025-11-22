@@ -5,6 +5,7 @@ import Predictor from "./Predictor"
 import Locator from "./Locator";
 import Classifier from "./Classifier";
 import SeverityAnalyzer from "./SeverityAnalyzer";
+import Estimator from "./Estimator"
 const Body = ({currentStep, setCurrentStep}) => {
     const step = useSelector((state) => state.image.step);
     const dispatch = useDispatch();
@@ -27,6 +28,8 @@ const Body = ({currentStep, setCurrentStep}) => {
                 return <Classifier onBack={handlePrevStage} onNext={handleNextStage}/>
             case 4:
                 return <SeverityAnalyzer onBack={handlePrevStage} onNext={handleNextStage}/>
+            case 5:
+                return <Estimator onBack={handlePrevStage} onNext={handleNextStage}/>
             default:
                 return <Predictor onNext={handleNextStage} />;
         }

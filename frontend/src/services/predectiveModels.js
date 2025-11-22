@@ -37,3 +37,22 @@ export const classifyDamage = (IMAGE) => {
         }
     });
 }
+export const estimateCost = (IMAGE) => {
+    const formData = new FormData();
+    formData.append('file', IMAGE); 
+    return axios.post(PIPELINE_API_BASE_URL + "/estimate", formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
+export const downloadReport = (downloadUrl) => {
+    const fullUrl = downloadUrl.startsWith("http") 
+        ? downloadUrl 
+        : `${PIPELINE_API_BASE_URL}${downloadUrl}`;
+    
+    return axios.get(fullUrl, {
+        responseType: "blob"
+    });
+};

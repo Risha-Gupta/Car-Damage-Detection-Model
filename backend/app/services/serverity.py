@@ -4,7 +4,7 @@ import base64
 import numpy as np
 from datetime import datetime
 from ultralytics import YOLO
-
+import random
 class Stage4DamageClassifier:
     """
     Stage 4 final version:
@@ -34,7 +34,6 @@ class Stage4DamageClassifier:
             self._loaded = True
 
     def _run_part_detection(self, image_array):
-        """Runs YOLO to detect car parts."""
         self._load_model()
 
         results = self.model.predict(image_array, save=False)[0]
@@ -44,16 +43,74 @@ class Stage4DamageClassifier:
         class_ids = np.array(results.boxes.cls.cpu()).astype(int)
         scores = np.array(results.boxes.conf.cpu()).astype(float)
 
+        # segmentation masks
+        segs = []
+        if results.masks is not None:
+            h, w = image_array.shape[:2]
+            for seg in results.masks.xyn:
+                seg[:, 0] *= w
+                seg[:, 1] *= h
+                segs.append(seg.astype(int).tolist())
+        else:
+            segs = [None] * len(bboxes)
+
         parts = []
         for i, box in enumerate(bboxes):
             parts.append({
                 "bbox": box.tolist(),
                 "class_id": int(class_ids[i]),
                 "class_name": class_names[int(class_ids[i])],
-                "confidence": float(scores[i])
+                "confidence": float(scores[i]),
+                "segmentation": segs[i]
             })
 
         return parts
+    def _save_part_detection_visualization(self, image_array, part_detections):
+        img = image_array.copy()
+        overlay = img.copy()
+        alpha = 0.4
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        class_colors = {}
+
+        for det in part_detections:
+            x1, y1, x2, y2 = det["bbox"]
+            cls = det["class_id"]
+            name = det["class_name"]
+            conf = det["confidence"]
+            seg = det.get("segmentation", None)
+
+            if cls not in class_colors:
+                class_colors[cls] = (
+                    random.randint(50, 255),
+                    random.randint(50, 255),
+                    random.randint(50, 255)
+                )
+
+            color = class_colors[cls]
+
+            # Draw bbox
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+
+            # Polygon mask
+            if seg is not None:
+                seg_np = np.array(seg, dtype=np.int32)
+                cv2.polylines(img, [seg_np], True, color, 2)
+                cv2.fillPoly(overlay, [seg_np], color)
+
+            # Labels
+            cv2.putText(img, f"{name}", (x1, y1 - 10), font, 0.6, color, 2)
+            cv2.putText(img, f"{conf:.2f}", (x1, y1 - 28), font, 0.6, (255, 255, 255), 2)
+
+        # Blend overlay for mask
+        cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"part_detection_{ts}.jpg"
+        save_path = os.path.join(self.output_dir, filename)
+
+        cv2.imwrite(save_path, img)
+        return save_path
+
 
     def classify_damage(self, segmentation_data, bbox_data, image_array):
         """
@@ -64,6 +121,7 @@ class Stage4DamageClassifier:
 
         # --- 1. YOLO part detection ---
         part_detections = self._run_part_detection(image_array)
+        vis_path = self._save_part_detection_visualization(image_array, part_detections)
 
         stage3_bboxes = bbox_data.get("detected_damage_bboxes", [])
         total_area = sum(b["bbox_area"] for b in stage3_bboxes)
@@ -76,17 +134,9 @@ class Stage4DamageClassifier:
             "moderate" if total_area <= 20000 else
             "severe"
         )
+        damage_types = {d["class_name"] for d in segmentation_data["detections"]}
 
-        # --- 3. type ---
-        if coverage > 10:
-            damage_type = "dent"
-        elif coverage > 3:
-            damage_type = "crack"
-        elif coverage > 0:
-            damage_type = "scratch"
-        else:
-            damage_type = "no_damage"
-
+        damage_type = ", ".join(damage_types) if damage_types else "no_damage"
         # --- 4. priority ---
         if severity == "severe" or coverage > 15:
             priority = "high"
@@ -94,8 +144,6 @@ class Stage4DamageClassifier:
             priority = "medium"
         else:
             priority = "low"
-
-        # --- 5. Merge Stage 3 damage with YOLO part detection ---
         merged = []
         for idx, b in enumerate(stage3_bboxes):
             best_part = None
@@ -103,8 +151,6 @@ class Stage4DamageClassifier:
 
             for part in part_detections:
                 px1, py1, px2, py2 = part["bbox"]
-
-                # IOU check (lazy but works)
                 if not (px2 < bx1 or px1 > bx2 or py2 < by1 or py1 > by2):
                     best_part = part
                     break

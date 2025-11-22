@@ -49,11 +49,30 @@ class PredictionService:
         edges = np.expand_dims(edges, axis=0)
 
         return img_rgb, edges
+    def save_preprocessed(self, img_rgb: np.ndarray, edges: np.ndarray, filename: str):
+        # Convert arrays from batch (1, h, w, 3) to (h, w, 3)
+        rgb_img = (img_rgb[0] * 255).astype(np.uint8)
+        edges_img = (edges[0] * 255).astype(np.uint8)
 
-   
+        # Path to save folder
+        save_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "preprocessed")
+        os.makedirs(save_dir, exist_ok=True)
+
+        rgb_path = os.path.join(save_dir, f"rgb_{filename}.png")
+        edges_path = os.path.join(save_dir, f"edges_{filename}.png")
+
+        # Save using cv2
+        cv2.imwrite(rgb_path, cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(edges_path, cv2.cvtColor(edges_img, cv2.COLOR_RGB2BGR))
+
+        return rgb_path, edges_path
+
     def predict(self, image_bytes: bytes) -> Dict:
         img_rgb, edges = self.preprocess_image(image_bytes)
+        filename = f"img_{np.random.randint(1000000)}"
 
+        # Save preprocessed outputs
+        rgb_path, edges_path = self.save_preprocessed(img_rgb, edges, filename)
         prob = float(self.model.predict([img_rgb, edges], verbose=0)[0][0]) # type: ignore
         is_damaged = prob > self.threshold
 

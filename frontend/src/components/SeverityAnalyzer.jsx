@@ -2,8 +2,10 @@ import { ArrowRight, ArrowLeft, Loader2, AlertCircle, CheckCircle } from "lucide
 import { useState } from "react"; 
 import { fileStore } from "../utils/fileStore";
 import { classifyDamage } from "../services/predectiveModels";
-
+import { useDispatch } from "react-redux";
+import { setStepStatus } from "../utils/imageSlice";
 const SeverityAnalyzer = ({ onBack, onNext }) => {
+    const dispatch = useDispatch()
     const [loading, setLoading] = useState(false);
     const [classificationResult, setClassificationResult] = useState(null);
     const [error, setError] = useState(null);
@@ -26,17 +28,6 @@ const SeverityAnalyzer = ({ onBack, onNext }) => {
             default: return 'text-gray-700 bg-gray-100';
         }
     };
-
-    const getDamageTypeIcon = (type) => {
-        switch(type) {
-            case 'dent': return '🔨';
-            case 'crack': return '⚡';
-            case 'scratch': return '✏️';
-            case 'no_damage': return '✅';
-            default: return '❓';
-        }
-    };
-
     const handleClassify = async () => {
         if (!image) {
             setError('No image available. Please go back and upload an image.');
@@ -46,15 +37,17 @@ const SeverityAnalyzer = ({ onBack, onNext }) => {
         setLoading(true);
         setError(null);
         setClassificationResult(null);
-
+        dispatch(setStepStatus({ step: 4, status: "processing" }))
         try {
             const res = await classifyDamage(image)
             const data = res.data;
             setClassificationResult(data);
+            dispatch(setStepStatus({ step: 4, status: "success" }))
             console.log("Updated Stage 4:", data)
         } catch (error) {
             console.error('Classification error:', error);
             setError('Failed to classify damage. Please try again.');
+            dispatch(setStepStatus({ step: 2, status: "failed" }))
         } finally {
             setLoading(false);
         }
@@ -121,10 +114,6 @@ const SeverityAnalyzer = ({ onBack, onNext }) => {
                                 {result.severity}
                             </p>
                         </div>
-                        <div className="text-5xl">
-                            {result.severity === 'minor' ? '✓' : 
-                             result.severity === 'moderate' ? '⚠️' : '🚨'}
-                        </div>
                     </div>
                 </div>
 
@@ -135,7 +124,6 @@ const SeverityAnalyzer = ({ onBack, onNext }) => {
                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                         <p className="text-sm text-purple-700 font-medium mb-2">Damage Type</p>
                         <div className="flex items-center gap-2">
-                            <span className="text-3xl">{getDamageTypeIcon(result.damage_type)}</span>
                             <p className="text-xl font-bold text-purple-900 capitalize">
                                 {result.damage_type.replace('_', ' ')}
                             </p>

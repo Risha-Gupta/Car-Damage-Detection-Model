@@ -3,7 +3,10 @@ from app.services.serverity import Stage4DamageClassifier
 from app.services.prediction import PredictionService
 from app.services.locate import LocationService
 from app.services.segmentation import SegmentationService
+from app.services.estimation import Stage5CostEstimator
+from app.services.report_generator import InsuranceReportGenerator
 import numpy as np
+from fastapi.responses import FileResponse
 from PIL import Image
 import io
 import cv2
@@ -17,8 +20,9 @@ loc_svc = LocationService()
 seg_svc = SegmentationService()
 classifier_svc = Stage4DamageClassifier()
 detectron_svc = DetectronModelService()
+estimation_svc = Stage5CostEstimator()
+report_gen = InsuranceReportGenerator()
 
-# Dependency getters
 def get_pred_svc():
     return pred_svc
 
@@ -252,6 +256,103 @@ async def classify_damage(
             status_code=500,
             detail=error_detail
         )
+@router.post("/estimate")
+async def estimate_damage_cost(
+    file: UploadFile = File(...),
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    try:
+        img_bytes = await file.read()
+
+        # -----------------------------
+        # Stage 3: Segmentation
+        # -----------------------------
+        stage3_result = seg_svc.predict(img_bytes)
+
+        img_pil = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        img_np = np.array(img_pil)
+        img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+
+        # -----------------------------
+        # Convert Stage 3 → bbox_data
+        # -----------------------------
+        detections = stage3_result.get("detections", [])
+        bboxes = []
+
+        for det in detections:
+            bbox = det.get("bbox")
+
+            if isinstance(bbox, dict):
+                x = bbox.get("x_min", 0)
+                y = bbox.get("y_min", 0)
+                w = bbox.get("width", 0)
+                h = bbox.get("height", 0)
+                area = w * h
+                bbox_list = [x, y, x + w, y + h]
+
+            elif isinstance(bbox, list) and len(bbox) >= 4:
+                x1, y1, x2, y2 = bbox[:4]
+                area = (x2 - x1) * (y2 - y1)
+                bbox_list = [x1, y1, x2, y2]
+
+            else:
+                continue
+
+            bboxes.append({"bbox": bbox_list, "bbox_area": area})
+
+        bbox_data = {"detected_damage_bboxes": bboxes}
+
+        # -----------------------------
+        # Stage 4: Severity + Type
+        # -----------------------------
+        stage4_output = classifier_svc.classify_damage(
+            segmentation_data=stage3_result,
+            bbox_data=bbox_data,
+            image_array=img_bgr
+        )
+
+        # -----------------------------
+        # Stage 5: Cost Estimation
+        # -----------------------------
+        result = estimation_svc.estimate_cost(stage4_output)
+        pdf_path = report_gen.generate(stage4_output, result, meta={})
+        
+        filename = os.path.basename(pdf_path)
+        download_url = f"/api/download-report/{filename}"
+        # -----------------------------
+        # Final Response
+        # -----------------------------
+        return {
+            "success": True,
+            "filename": file.filename,
+            "stage":5,
+            "result": result,
+            "report": {
+                "download_url": download_url
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stage 5 error: {str(e)}")
+
+@router.get("/download-report/{filename}")
+async def download_report(filename: str):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    print(base_dir)
+    report_dir = os.path.join(base_dir, "../../../outputs/reports")
+    file_path = os.path.join(report_dir, filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return FileResponse(
+        file_path,
+        media_type="application/pdf",
+        filename=filename
+    )
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint"""

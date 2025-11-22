@@ -25,7 +25,6 @@ class Stage2DamageLocalizationDetector:
         if not Path(self.model_path).exists():
             raise FileNotFoundError(f"Stage2 model not found at: {self.model_path}")
 
-        # Load Detectron2 model
         self.detection_network = DamageLocalizationModel(
             model_version="ResNet50",
             use_pretrained_weights=False

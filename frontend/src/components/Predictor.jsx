@@ -52,7 +52,7 @@ const Predictor = ({onNext}) => {
                 dispatch(setStepStatus({ step: 1, status: "success" }));
 
             else
-                dispatch(setStepStatus({ step: 1, status: "success" }));
+                dispatch(setStepStatus({ step: 1, status: "failed" }));
 
         } catch (error) {
             console.error('Prediction error:', error);

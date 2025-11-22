@@ -143,6 +143,13 @@ const Locator = ({ onBack, onNext }) => {
                             >
                                 Try Another Image
                             </button>
+                             <button
+                                onClick={onNext}
+                                className="mt-6 w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                            >
+                                Proceed to Classification
+                                <ArrowRight size={20} />
+                            </button>
                         </div>
                     )}
                 </div>

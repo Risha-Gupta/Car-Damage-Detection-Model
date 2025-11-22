@@ -5,3 +5,5 @@ __pycache__
 test.py
 detectron2-env
 .DS_Store
+/output
+/outputs
