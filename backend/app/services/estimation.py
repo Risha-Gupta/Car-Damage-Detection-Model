@@ -74,7 +74,6 @@ class Stage5CostEstimator:
         total_cost = round(sum(r["final_cost"] for r in region_outputs), 2)
 
         return {
-            "model_used": "ensemble_lgbm_xgb",
             "valid_regions": len(region_outputs),
             "ignored_regions": ignored,
             "total_estimated_cost": total_cost,

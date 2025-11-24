@@ -160,6 +160,18 @@ const Predictor = ({onNext}) => {
                         <p className={prediction.is_damaged ? "text-red-700" : "text-green-700"}>
                             <strong>Confidence:</strong> {(prediction.confidence * 100).toFixed(2)}%
                         </p>
+                        <div className="mt-4 pt-4 border-t border-gray-300">
+                            <p className="font-semibold mb-2">Final Verdict:</p>
+                            {prediction.is_damaged ? (
+                                <p className="text-red-700">
+                                    Your vehicle appears to be damaged. Proceed to the next step for more details.
+                                </p>
+                            ) : (
+                                <p className="text-green-700">
+                                    Your vehicle appears to be undamaged. If you still think it's damaged, try clicking a picture from a far off angle with better lighting.
+                                </p>
+                            )}
+                        </div>
                         {prediction.is_damaged && (
                         <button
                             onClick={handleProceed}

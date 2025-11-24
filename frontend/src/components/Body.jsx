@@ -29,7 +29,7 @@ const Body = ({currentStep, setCurrentStep}) => {
             case 4:
                 return <SeverityAnalyzer onBack={handlePrevStage} onNext={handleNextStage}/>
             case 5:
-                return <Estimator onBack={handlePrevStage} onNext={handleNextStage}/>
+                return <Estimator onBack={handlePrevStage}/>
             default:
                 return <Predictor onNext={handleNextStage} />;
         }

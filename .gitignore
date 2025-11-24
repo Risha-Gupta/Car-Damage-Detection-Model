@@ -7,3 +7,4 @@ detectron2-env
 .DS_Store
 /output
 /outputs
+/backend/app/services/preprocessed

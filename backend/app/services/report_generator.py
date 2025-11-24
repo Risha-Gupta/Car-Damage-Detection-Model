@@ -10,8 +10,6 @@ from reportlab.lib.colors import HexColor
 
 
 class InsuranceReportGenerator:
-    
-    # Colors
     PRIMARY = HexColor("#1e3a5f")
     SECONDARY = HexColor("#4a6fa5")
     ACCENT = HexColor("#2e7d32")
@@ -43,41 +41,28 @@ class InsuranceReportGenerator:
         return None, None
 
     def _draw_header(self, c, width, height, claim_id):
-        # Header background
         c.setFillColor(self.PRIMARY)
         c.rect(0, height - 35 * mm, width, 35 * mm, fill=True, stroke=False)
-        
-        # Title
         c.setFillColor(HexColor("#ffffff"))
         c.setFont("Helvetica-Bold", 20)
         c.drawString(20 * mm, height - 18 * mm, "Vehicle Damage Assessment Report")
-        
-        # Subtitle
         c.setFont("Helvetica", 10)
         c.drawString(20 * mm, height - 26 * mm, f"Claim Reference: {claim_id}")
         c.drawRightString(width - 20 * mm, height - 26 * mm, 
-                         f"Generated: {datetime.now().strftime('%B %d, %Y at %H:%M')}")
+                        f"Generated: {datetime.now().strftime('%B %d, %Y at %H:%M')}")
 
     def _draw_summary_box(self, c, y, width, stage5_output):
         box_height = 45 * mm
         margin = 20 * mm
         box_width = width - (2 * margin)
-        
-        # Box background
         c.setFillColor(self.BG_LIGHT)
         c.roundRect(margin, y - box_height, box_width, box_height, 3 * mm, fill=True, stroke=False)
-        
-        # Border
         c.setStrokeColor(self.BORDER)
         c.setLineWidth(0.5)
         c.roundRect(margin, y - box_height, box_width, box_height, 3 * mm, fill=False, stroke=True)
-        
-        # Title
         c.setFillColor(self.PRIMARY)
         c.setFont("Helvetica-Bold", 12)
         c.drawString(margin + 5 * mm, y - 8 * mm, "Cost Estimate Summary")
-        
-        # Total cost (prominent)
         total_cost = stage5_output.get("total_estimated_cost", 0)
         c.setFillColor(self.ACCENT)
         c.setFont("Helvetica-Bold", 24)
@@ -87,7 +72,6 @@ class InsuranceReportGenerator:
         c.setFont("Helvetica", 9)
         c.drawString(margin + 5 * mm, y - 28 * mm, "Estimated Repair Cost")
         
-        # Stats on the right
         stats_x = margin + 90 * mm
         c.setFillColor(self.TEXT_DARK)
         c.setFont("Helvetica", 10)
@@ -96,7 +80,6 @@ class InsuranceReportGenerator:
         ignored = stage5_output.get("ignored_regions", 0)
         
         c.drawString(stats_x, y - 15 * mm, f"Damage Areas Identified: {valid}")
-        c.drawString(stats_x, y - 23 * mm, f"Areas Below Threshold: {ignored}")
         c.drawString(stats_x, y - 31 * mm, f"Assessment Date: {datetime.now().strftime('%Y-%m-%d')}")
         
         return y - box_height - 10 * mm
@@ -159,24 +142,15 @@ class InsuranceReportGenerator:
         width, height = A4
         margin = 20 * mm
         page_num = 1
-
-        # Header
         self._draw_header(c, width, height, claim_id)
         y = height - 45 * mm
-
-        # Summary box
         y = self._draw_summary_box(c, y, width, stage5_output)
         y -= 5 * mm
-
-        # Damage details section
         c.setFillColor(self.PRIMARY)
         c.setFont("Helvetica-Bold", 12)
         c.drawString(margin, y, "Damage Breakdown")
         y -= 10 * mm
-
-        # Table
         y = self._draw_table_header(c, y, margin)
-        
         region_list = stage5_output.get("details", [])
         tmp_files = []
 
@@ -195,8 +169,6 @@ class InsuranceReportGenerator:
         c.setLineWidth(0.5)
         c.line(margin, y, margin + 170 * mm, y)
         y -= 15 * mm
-
-        # ROI Images section
         roi_images = stage4_output.get("roi_images", [])
         if roi_images:
             if y < 80 * mm:
@@ -229,21 +201,17 @@ class InsuranceReportGenerator:
 
                 img_reader, tmpf = self._get_image_reader(roi)
                 if img_reader:
-                    # Image border
                     c.setStrokeColor(self.BORDER)
                     c.setLineWidth(1)
                     c.rect(img_x - 1 * mm, y - thumb_h - 1 * mm, 
                            thumb_w + 2 * mm, thumb_h + 2 * mm, fill=False, stroke=True)
                     
                     c.drawImage(img_reader, img_x, y - thumb_h, 
-                               width=thumb_w, height=thumb_h, preserveAspectRatio=True)
-                    
+                                width=thumb_w, height=thumb_h, preserveAspectRatio=True) 
                     if tmpf:
                         tmp_files.append(tmpf)
                 
                 img_x += thumb_w + 5 * mm
-
-        # Footer
         self._draw_footer(c, width, page_num)
         c.save()
         for f in tmp_files:

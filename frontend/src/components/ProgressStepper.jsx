@@ -10,11 +10,11 @@ const ProgressStepper = () => {
     const stepStatus = useSelector((state) => state.image.stepStatus);
 
     const steps = [
-        { number: 1, label: 'Stage 1' },
-        { number: 2, label: 'Stage 2' },
-        { number: 3, label: 'Stage 3' },
-        { number: 4, label: 'Stage 4' },
-        { number: 5, label: 'Stage 5' }
+        { number: 1, label: 'Upload Your Image' },
+        { number: 2, label: 'Damage Localization' },
+        { number: 3, label: 'Damage Segmentation' },
+        { number: 4, label: 'Severity Analysis' },
+        { number: 5, label: 'Cost Report' }
     ];
 
     const handleStepClick = (stepNumber) => {
@@ -22,7 +22,7 @@ const ProgressStepper = () => {
     };
 
     return (
-        <div className="w-48 shrink-0 min-h-screen bg-gray-50 p-6 border-r border-gray-200">
+        <div className="w-50 shrink-0 min-h-screen bg-gray-50 p-6 border-r border-gray-200">
             <div className="flex flex-col items-center space-y-2">
                 {steps.map((step, index) => {
 
